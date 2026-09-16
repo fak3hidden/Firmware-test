@@ -1,8 +1,10 @@
 @echo off
 rem ============================================================
 rem  T-Embed CC1101 Firmware Updater - Flipper Zero style
-rem  - clones the repo if missing
+rem  - self-updates this repo (branch arena/01a0aafc-firmware-test)
+rem  - clones the upstream repo if missing
 rem  - pulls the newest firmware source (git pull --ff-only)
+rem  - applies the Flipper theme patch
 rem  - optional: builds and flashes with PlatformIO
 rem ============================================================
 setlocal
@@ -22,6 +24,9 @@ set "RST=%ESC%[0m"
 set "REPO=T-Embed-CC1101"
 set "GURL=https://github.com/Xinyuan-LilyGO/T-Embed-CC1101.git"
 
+rem --- branch of THIS repository the updater keeps itself on ---
+set "SELF_BRANCH=arena/01a0aafc-firmware-test"
+
 cls
 call :banner
 
@@ -29,29 +34,51 @@ where git >nul 2>nul
 if errorlevel 1 goto :nogit
 
 rem ============================================================
-rem  Stage 0: self-update - pull THIS repository (updater,
-rem  theme patch, previews) first, then relaunch with fresh code.
+rem  Stage 0: self-update - make sure we are on %SELF_BRANCH% and
+rem  pull THIS repository (updater, theme patch, previews), then
+rem  relaunch with fresh code.
 rem ============================================================
 if /i "%~1"=="noself" goto :selfdone
 if not exist ".git" goto :selfdone
-echo(%GRY%  Checking for updates to this updater...%RST%
+echo(%GRY%  Checking for updates to this updater ^(branch %SELF_BRANCH%^)...%RST%
 git fetch origin --quiet 2>nul
 if errorlevel 1 goto :selfdone
+git rev-parse --verify "origin/%SELF_BRANCH%" >nul 2>nul
+if not errorlevel 1 goto :selfbranchknown
+echo(%GRY%  Branch %SELF_BRANCH% not found on remote - skipping self-update.%RST%
+goto :selfdone
+
+:selfbranchknown
 set "BR0="
 for /f %%b in ('git rev-parse --abbrev-ref HEAD 2^>nul') do set "BR0=%%b"
-if not defined BR0 goto :selfdone
+if /i "%BR0%"=="%SELF_BRANCH%" goto :selfcheck
+echo(%ORG%  Switching to branch %SELF_BRANCH%...%RST%
+git checkout "%SELF_BRANCH%" >nul 2>nul
+if not errorlevel 1 goto :selfrelaunch
+git checkout -b "%SELF_BRANCH%" --track "origin/%SELF_BRANCH%" >nul 2>nul
+if not errorlevel 1 goto :selfrelaunch
+echo(%RED%  Could not switch branch ^(local changes?^) - skipping self-update.%RST%
+goto :selfdone
+
+:selfcheck
 set "SELF_BEHIND="
-for /f %%c in ('git rev-list --count HEAD..origin/%BR0% 2^>nul') do set "SELF_BEHIND=%%c"
+for /f %%c in ('git rev-list --count HEAD..origin/%SELF_BRANCH% 2^>nul') do set "SELF_BEHIND=%%c"
 if not defined SELF_BEHIND goto :selfdone
 echo %SELF_BEHIND%| findstr /r "^[0-9][0-9]*$" >nul || set "SELF_BEHIND=0"
 if "%SELF_BEHIND%"=="0" (
-    echo(%GRN%  Updater repo: up to date.%RST%
+    echo(%GRN%  Updater repo: up to date ^(%SELF_BRANCH%^).%RST%
     goto :selfdone
 )
 echo(%ORG%  Updater repo: %SELF_BEHIND% new commit^(s^) - pulling...%RST%
 git pull --ff-only >nul 2>nul
 if errorlevel 1 goto :selffail
 echo(%GRN%  Updater refreshed. Restarting with the new code...%RST%
+goto :selfrelaunchmsg
+
+:selfrelaunch
+echo(%GRN%  On %SELF_BRANCH%. Restarting updater...%RST%
+
+:selfrelaunchmsg
 echo.
 call "%~f0" noself & exit /b 0
 
