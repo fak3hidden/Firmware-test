@@ -28,6 +28,39 @@ call :banner
 where git >nul 2>nul
 if errorlevel 1 goto :nogit
 
+rem ============================================================
+rem  Stage 0: self-update - pull THIS repository (updater,
+rem  theme patch, previews) first, then relaunch with fresh code.
+rem ============================================================
+if /i "%~1"=="noself" goto :selfdone
+if not exist ".git" goto :selfdone
+echo(%GRY%  Checking for updates to this updater...%RST%
+git fetch origin --quiet 2>nul
+if errorlevel 1 goto :selfdone
+set "BR0="
+for /f %%b in ('git rev-parse --abbrev-ref HEAD 2^>nul') do set "BR0=%%b"
+if not defined BR0 goto :selfdone
+set "SELF_BEHIND="
+for /f %%c in ('git rev-list --count HEAD..origin/%BR0% 2^>nul') do set "SELF_BEHIND=%%c"
+if not defined SELF_BEHIND goto :selfdone
+echo %SELF_BEHIND%| findstr /r "^[0-9][0-9]*$" >nul || set "SELF_BEHIND=0"
+if "%SELF_BEHIND%"=="0" (
+    echo(%GRN%  Updater repo: up to date.%RST%
+    goto :selfdone
+)
+echo(%ORG%  Updater repo: %SELF_BEHIND% new commit^(s^) - pulling...%RST%
+git pull --ff-only >nul 2>nul
+if errorlevel 1 goto :selffail
+echo(%GRN%  Updater refreshed. Restarting with the new code...%RST%
+echo.
+call "%~f0" noself & exit /b 0
+
+:selffail
+echo(%RED%  Self-update failed ^(local changes blocking fast-forward?^)%RST%
+echo(%GRY%  Continuing with the current scripts - try: git stash%RST%
+
+:selfdone
+
 if not exist "%REPO%\.git" goto :askclone
 goto :fetch
 

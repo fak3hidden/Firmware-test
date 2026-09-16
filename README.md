@@ -25,7 +25,7 @@ A purpose-built Flipper Zero interface, not just a recolor:
 
 | File | Purpose |
 | --- | --- |
-| `update.bat` | Flipper-styled updater: clones the upstream LILYGO repo if missing, pulls new sources, applies the theme, and can build + flash with PlatformIO. |
+| `update.bat` | Flipper-styled updater: **pulls this repo first** (refreshing itself, the theme patch and previews, then relaunching with the new code), clones the upstream LILYGO repo if missing, pulls new sources, applies the theme, and can build + flash with PlatformIO. |
 | `compile.bat` | Flipper-styled builder: applies the theme, compiles the `T_Embed_CC1101` env with PlatformIO (auto-installs it via pip if missing), then flashes over USB with port auto-detect and retries, and can open the serial monitor. |
 | `flipper-style.patch` | The theme itself (`examples/factory/flipper_style.h` + restyled UI files), applied to the local clone. |
 | `previews/` | Renderings of the actual theme draw calls (menu page 1/2, startup). |
