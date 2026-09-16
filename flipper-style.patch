@@ -1,0 +1,2066 @@
+diff --git a/examples/factory/factory.cpp b/examples/factory/factory.cpp
+index 1570c19..418b429 100644
+--- a/examples/factory/factory.cpp
++++ b/examples/factory/factory.cpp
+@@ -253,13 +253,15 @@ static const int8_t kEncTable[4][4] = {
+     { 0,  1, -1,  0},
+ };
+ 
+-constexpr uint16_t kUiBg        = 0x0841;
+-constexpr uint16_t kUiPanel     = 0x1082;
+-constexpr uint16_t kUiCard      = 0x18C3;
+-constexpr uint16_t kUiEdge      = 0x31A6;
+-constexpr uint16_t kUiMuted     = 0x9CD3;
+-constexpr uint16_t kPassBg      = 0x0A41;
+-constexpr uint16_t kFailBg      = 0x3006;
++// Flipper Zero inspired light palette (monochrome + brand orange accent)
++constexpr uint16_t kUiBg        = 0xFFFF;  // Flipper white
++constexpr uint16_t kUiPanel     = 0xF79E;  // near-white panel
++constexpr uint16_t kUiCard      = 0xFFFF;  // white cards
++constexpr uint16_t kUiEdge      = 0x0000;  // black frames
++constexpr uint16_t kUiMuted     = 0x7BEF;  // gray subtext
++constexpr uint16_t kUiAccent    = 0xFC00;  // Flipper orange #FF8200
++constexpr uint16_t kPassBg      = 0xE7DC;  // light green tint
++constexpr uint16_t kFailBg      = 0xFEBA;  // light red tint
+ constexpr int16_t  kHeaderH     = 24;
+ constexpr int16_t  kFooterH     = 18;
+ constexpr int16_t  kMargin      = 8;
+@@ -509,33 +511,35 @@ void drawBackButton(const bool selected)
+     const int16_t h = 14;
+     const int16_t x = tft.width() - w - 6;
+     const int16_t y = tft.height() - kFooterH + 2;
+-    const uint16_t bg = selected ? TFT_WHITE : TFT_DARKGREY;
+-    const uint16_t fg = selected ? TFT_BLACK : TFT_LIGHTGREY;
++    const uint16_t bg = selected ? TFT_BLACK : kUiBg;
++    const uint16_t fg = selected ? kUiBg : TFT_BLACK;
+ 
+     gSubPageGfx.fillRoundRect(x, y, w, h, 5, bg);
+-    gSubPageGfx.drawRoundRect(x, y, w, h, 5, selected ? TFT_YELLOW : 0x52AA);
++    gSubPageGfx.drawRoundRect(x, y, w, h, 5, selected ? kUiAccent : TFT_BLACK);
+     gSubPageGfx.setTextColor(fg, bg);
+     gSubPageGfx.drawCentreString("BACK", x + w / 2, y + 3, 1);
+ }
+ 
+ void drawPageHeader(const char* title, const uint16_t accent)
+ {
+-    gSubPageGfx.fillRect(0, 0, gSubPageGfx.width(), kHeaderH, TFT_NAVY);
++    gSubPageGfx.fillRect(0, 0, gSubPageGfx.width(), kHeaderH, kUiBg);
+     gSubPageGfx.setTextDatum(TL_DATUM);
+-    gSubPageGfx.setTextColor(TFT_WHITE, TFT_NAVY);
++    gSubPageGfx.setTextColor(TFT_BLACK, kUiBg);
+     gSubPageGfx.drawString(title, kMargin, 5, 2);
+     gSubPageGfx.setTextDatum(TR_DATUM);
+-    gSubPageGfx.setTextColor(accent, TFT_NAVY);
+-    gSubPageGfx.drawString("Factory", gSubPageGfx.width() - kMargin, 7, 1);
++    gSubPageGfx.setTextColor(accent == TFT_CYAN || accent == TFT_YELLOW ? kUiAccent : accent, kUiBg);
++    gSubPageGfx.drawString("T-Embed", gSubPageGfx.width() - kMargin, 7, 1);
+     gSubPageGfx.setTextDatum(TL_DATUM);
++    gSubPageGfx.drawFastHLine(0, kHeaderH - 1, gSubPageGfx.width(), TFT_BLACK);
+ }
+ 
+ void drawPageFooter(const char* text, const bool backSelected = false)
+ {
+     const int16_t y = gSubPageGfx.height() - kFooterH;
+-    gSubPageGfx.fillRect(0, y, gSubPageGfx.width(), kFooterH, TFT_DARKGREY);
++    gSubPageGfx.fillRect(0, y, gSubPageGfx.width(), kFooterH, kUiPanel);
++    gSubPageGfx.drawFastHLine(0, y, gSubPageGfx.width(), TFT_BLACK);
+     gSubPageGfx.setTextDatum(TL_DATUM);
+-    gSubPageGfx.setTextColor(TFT_WHITE, TFT_DARKGREY);
++    gSubPageGfx.setTextColor(TFT_BLACK, kUiPanel);
+     gSubPageGfx.drawString(text, kMargin, y + 4, 1);
+     drawBackButton(backSelected);
+ }
+@@ -567,7 +571,7 @@ void drawMeter(const int16_t x, const int16_t y, const int16_t w, const int16_t
+ {
+     const uint16_t clipped = min<uint16_t>(value, maxValue);
+     const int16_t fillW = maxValue == 0 ? 0 : static_cast<int16_t>((static_cast<uint32_t>(w - 4) * clipped) / maxValue);
+-    gSubPageGfx.fillRoundRect(x, y, w, h, 5, 0x2104);
++    gSubPageGfx.fillRoundRect(x, y, w, h, 5, 0xE71C);
+     gSubPageGfx.drawRoundRect(x, y, w, h, 5, kUiEdge);
+     gSubPageGfx.fillRoundRect(x + 2, y + 2, fillW, h - 4, 4, color);
+ }
+@@ -664,6 +668,7 @@ void handleIdlePowerState()
+     }
+ }
+ 
++#include "flipper_style.h"
+ #include "main_menu_ui.h"
+ #include "page_startup.h"
+ 
+@@ -679,14 +684,16 @@ void drawMenuAlert(Canvas& gfx)
+     const int16_t x = (gfx.width() - w) / 2;
+     const int16_t y = 52;
+ 
+-    gfx.fillRoundRect(x, y, w, h, 8, kMenuPanel);
+-    gfx.drawRoundRect(x, y, w, h, 8, TFT_ORANGE);
+-    gfx.drawFastHLine(x + 10, y + 24, w - 20, kMenuPanelEdge);
++    // Flipper toast: white card, double black frame, orange title rule
++    gfx.fillRoundRect(x, y, w, h, 8, kFlipperWhite);
++    gfx.drawRoundRect(x, y, w, h, 8, kFlipperBlack);
++    gfx.drawRoundRect(x + 1, y + 1, w - 2, h - 2, 7, kFlipperBlack);
+ 
+     gfx.setTextDatum(MC_DATUM);
+-    gfx.setTextColor(TFT_ORANGE, kMenuPanel);
++    gfx.setTextColor(kFlipperBlack, kFlipperWhite);
+     gfx.drawString(clipMenuText(gMenuAlertTitle, 36).c_str(), x + w / 2, y + 9, 1);
+-    gfx.setTextColor(kMenuText, kMenuPanel);
++    gfx.drawFastHLine(x + w / 2 - 30, y + 20, 60, kFlipperOrange);
++    gfx.setTextColor(kFlipperGray, kFlipperWhite);
+     gfx.drawString(clipMenuText(gMenuAlertDetail, 48).c_str(), x + w / 2, y + 32, 1);
+     gfx.setTextDatum(TL_DATUM);
+ }
+@@ -842,6 +849,15 @@ void setup()
+     Serial.begin(115200);
+     delay(400);
+     Serial.println();
++    Serial.println(F("           _.--._"));
++    Serial.println(F("        .-'      '-."));
++    Serial.println(F("       /   .-~~-.   \\     T-Embed CC1101"));
++    Serial.println(F("      |   /      \\   |    Flipper-style Factory"));
++    Serial.println(F("      |   \\       _/      by LILYGO"));
++    Serial.println(F("       \\   \\__..-'"));
++    Serial.println(F("        '.   /"));
++    Serial.println(F("          '-'"));
++    Serial.println();
+     Serial.println(F("T-Embed CC1101 Factory"));
+ 
+     pinMode(BOARD_PWR_EN, OUTPUT);
+diff --git a/examples/factory/flipper_style.h b/examples/factory/flipper_style.h
+new file mode 100644
+index 0000000..627f4da
+--- /dev/null
++++ b/examples/factory/flipper_style.h
+@@ -0,0 +1,154 @@
++#pragma once
++
++// =============================================================================
++// Flipper Zero inspired visual style for the T-Embed CC1101 factory firmware.
++// Monochrome white/black UI with the signature Flipper orange accent.
++// =============================================================================
++
++#include <math.h>
++
++constexpr uint16_t kFlipperWhite   = 0xFFFF;
++constexpr uint16_t kFlipperBlack   = 0x0000;
++constexpr uint16_t kFlipperOrange  = 0xFC00;  // #FF8200 brand orange
++constexpr uint16_t kFlipperGray    = 0x7BEF;  // subtext
++constexpr uint16_t kFlipperGrayLt  = 0xC618;  // hairlines / scroll track
++constexpr uint16_t kFlipperPanel   = 0xF79E;  // barely-gray panel fill
++
++// Plots a thin arc (a0..a1 degrees, 0 = east, 90 = south) pixel by pixel.
++template <typename Canvas>
++void plotArc(Canvas& gfx, float cx, float cy, float r, float a0, float a1, uint16_t color)
++{
++    if (r <= 0.0f) {
++        return;
++    }
++    float step = 30.0f / r;  // keep pitch under ~0.5 px on the circumference
++    if (step < 1.0f) step = 1.0f;
++    if (step > 15.0f) step = 15.0f;
++    for (float a = a0; a <= a1; a += step) {
++        const float rad = a * 0.017453292519943295f;
++        gfx.drawPixel((int16_t)lroundf(cx + r * cosf(rad)),
++                      (int16_t)lroundf(cy + r * sinf(rad)),
++                      color);
++    }
++}
++
++// The Flipper dolphin, drawn from primitives. Facing right, Flipper style.
++// (cx, cy) = body center, s = unit scale in pixels (1 = tiny, 3 = hero size).
++template <typename Canvas>
++void drawFlipperDolphin(Canvas& gfx, int16_t cx, int16_t cy, int16_t s,
++                        uint16_t fg = kFlipperBlack, uint16_t bg = kFlipperWhite)
++{
++    if (s < 1) s = 1;
++
++    // Tail peduncle and flukes
++    gfx.fillTriangle(cx - 10 * s, cy - 3 * s, cx - 19 * s, cy - 2 * s, cx - 10 * s, cy + 3 * s, fg);
++    gfx.fillTriangle(cx - 17 * s, cy - 3 * s, cx - 24 * s, cy - 8 * s, cx - 19 * s, cy + 1 * s, fg);
++    gfx.fillTriangle(cx - 17 * s, cy + 1 * s, cx - 23 * s, cy + 6 * s, cx - 17 * s, cy + 4 * s, fg);
++
++    // Dorsal fin
++    gfx.fillTriangle(cx - 5 * s, cy - 6 * s, cx - 1 * s, cy - 13 * s, cx + 5 * s, cy - 6 * s, fg);
++
++    // Body, melon head and snout
++    gfx.fillEllipse(cx, cy, 13 * s, 8 * s, fg);
++    gfx.fillCircle(cx + 9 * s, cy - 2 * s, 6 * s, fg);
++    gfx.fillEllipse(cx + 14 * s, cy, 4 * s, 3 * s, fg);
++
++    // Pectoral fin
++    gfx.fillTriangle(cx + 2 * s, cy + 5 * s, cx + 7 * s, cy + 12 * s, cx + 10 * s, cy + 4 * s, fg);
++
++    // Eye (white with dark pupil and a tiny sparkle)
++    const int16_t eyeX = cx + 11 * s;
++    const int16_t eyeY = cy - 3 * s;
++    const int16_t eyeR = (s * 3) / 2 > 1 ? (s * 3) / 2 : 1;
++    gfx.fillCircle(eyeX, eyeY, eyeR, bg);
++    const int16_t pupilR = s / 2 > 0 ? s / 2 : 1;
++    gfx.fillCircle(eyeX + (s > 1 ? 1 : 0), eyeY, pupilR, fg);
++    if (s > 1) {
++        gfx.drawPixel(eyeX + s, eyeY - s, bg);  // sparkle
++    }
++
++    // Smile: a light arc carved into the head, plus a second pass for weight
++    const float smileR = 4.0f * s;
++    plotArc(gfx, (float)(cx + 10 * s), (float)(cy + 1 * s), smileR, 35.0f, 145.0f, bg);
++    if (s > 1) {
++        plotArc(gfx, (float)(cx + 10 * s), (float)(cy + 1 * s), smileR - 1.0f, 40.0f, 140.0f, bg);
++    }
++}
++
++// Flipper style 8x8 app icons, line-drawn. icon = page index (0..10).
++template <typename Canvas>
++void drawFlipperIcon(Canvas& gfx, uint8_t icon, int16_t x, int16_t y, uint16_t color)
++{
++    switch (icon) {
++        case 0:  // Battery / PMU
++            gfx.drawRect(x, y + 1, 6, 6, color);
++            gfx.fillRect(x + 6, y + 3, 2, 2, color);
++            gfx.fillRect(x + 1, y + 2, 2, 4, color);
++            gfx.fillRect(x + 3, y + 2, 2, 4, color);
++            break;
++        case 1:  // CC1101 sub-GHz radio: emitter
++            gfx.fillCircle(x + 4, y + 4, 1, color);
++            gfx.drawCircle(x + 4, y + 4, 3, color);
++            gfx.drawPixel(x + 1, y + 1, color);
++            gfx.drawPixel(x + 7, y + 1, color);
++            gfx.drawPixel(x + 1, y + 7, color);
++            gfx.drawPixel(x + 7, y + 7, color);
++            break;
++        case 2:  // IR remote
++            gfx.drawRoundRect(x + 2, y, 5, 8, 1, color);
++            gfx.fillCircle(x + 4, y + 2, 1, color);
++            gfx.drawFastHLine(x + 3, y + 4, 3, color);
++            gfx.drawFastHLine(x + 3, y + 6, 3, color);
++            break;
++        case 3:  // Microphone
++            gfx.fillRoundRect(x + 3, y, 3, 5, 1, color);
++            gfx.drawFastVLine(x + 2, y + 2, 4, color);
++            gfx.drawFastVLine(x + 6, y + 2, 4, color);
++            gfx.drawFastHLine(x + 2, y + 6, 5, color);
++            gfx.drawFastVLine(x + 4, y + 7, 1, color);
++            gfx.drawFastHLine(x + 3, y + 7, 3, color);
++            break;
++        case 4:  // NFC: waves opening to the right
++            plotArc(gfx, (float)(x + 1), (float)(y + 4), 2.0f, -55.0f, 55.0f, color);
++            plotArc(gfx, (float)(x + 1), (float)(y + 4), 4.0f, -55.0f, 55.0f, color);
++            plotArc(gfx, (float)(x + 1), (float)(y + 4), 6.0f, -55.0f, 55.0f, color);
++            break;
++        case 5:  // nRF24: antenna
++            gfx.drawFastVLine(x + 4, y + 3, 5, color);
++            gfx.fillCircle(x + 4, y + 2, 1, color);
++            plotArc(gfx, (float)(x + 4), (float)(y + 2), 3.0f, 200.0f, 340.0f, color);
++            break;
++        case 6:  // SD card
++            gfx.drawRect(x + 1, y, 5, 8, color);
++            gfx.drawFastVLine(x + 2, y + 1, 2, color);
++            gfx.drawFastVLine(x + 3, y + 1, 2, color);
++            gfx.drawFastVLine(x + 4, y + 1, 2, color);
++            break;
++        case 7:  // WiFi
++            gfx.fillCircle(x + 4, y + 5, 1, color);
++            plotArc(gfx, (float)(x + 4), (float)(y + 6), 3.0f, 220.0f, 320.0f, color);
++            plotArc(gfx, (float)(x + 4), (float)(y + 6), 4.6f, 230.0f, 310.0f, color);
++            break;
++        case 8:  // TFT display
++            gfx.drawRect(x, y + 1, 8, 5, color);
++            gfx.fillRect(x + 3, y + 6, 2, 1, color);
++            gfx.drawFastHLine(x + 2, y + 7, 4, color);
++            break;
++        case 9:  // WS2812 LED
++            gfx.drawCircle(x + 4, y + 4, 3, color);
++            gfx.fillCircle(x + 4, y + 4, 1, color);
++            break;
++        case 10:  // Settings gear
++        default: {
++            gfx.drawCircle(x + 4, y + 4, 2, color);
++            for (int a = 0; a < 360; a += 45) {
++                const float rad = a * 0.017453292519943295f;
++                const float c = cosf(rad), sn = sinf(rad);
++                gfx.drawLine((int16_t)lroundf(x + 4 + 2.5f * c), (int16_t)lroundf(y + 4 + 2.5f * sn),
++                             (int16_t)lroundf(x + 4 + 3.8f * c), (int16_t)lroundf(y + 4 + 3.8f * sn),
++                             color);
++            }
++            break;
++        }
++    }
++}
+diff --git a/examples/factory/main_menu_ui.h b/examples/factory/main_menu_ui.h
+index 2822cf6..35846a6 100644
+--- a/examples/factory/main_menu_ui.h
++++ b/examples/factory/main_menu_ui.h
+@@ -1,33 +1,30 @@
+ #pragma once
+ 
++// =============================================================================
++// Main menu in Flipper Zero style: monochrome canvas, inverted selection bar,
++// app icons, scrollbar, top status bar and bottom button hints.
++// =============================================================================
++
+ constexpr uint32_t kMenuFrameIntervalMs = 20;
+-constexpr uint8_t kMenuPageSize = 10;
+-
+-constexpr uint16_t kMenuBg        = 0x0841;
+-constexpr uint16_t kMenuPanel     = 0x10A2;
+-constexpr uint16_t kMenuPanelSoft = 0x18C3;
+-constexpr uint16_t kMenuPanelEdge = 0x2945;
+-constexpr uint16_t kMenuAccent    = 0x55FF;
+-constexpr uint16_t kMenuText      = TFT_WHITE;
+-constexpr uint16_t kMenuSubText   = 0x9CD3;
+-constexpr uint16_t kMenuFooter    = 0x1062;
+-
+-constexpr int16_t kMenuHeaderH   = 24;
+-constexpr int16_t kMenuFooterY   = 152;
+-constexpr int16_t kMenuFooterH   = 18;
+-constexpr int16_t kMenuListX     = 8;
+-constexpr int16_t kMenuListY     = 32;
+-constexpr int16_t kMenuListW     = 176;
+-constexpr int16_t kMenuListH     = 118;
+-constexpr int16_t kMenuRowX      = 14;
+-constexpr int16_t kMenuRowStartY = 40;
+-constexpr int16_t kMenuRowW      = 164;
+-constexpr int16_t kMenuRowH      = 10;
+-constexpr int16_t kMenuRowPitch  = 11;
+-constexpr int16_t kMenuDetailX   = 192;
+-constexpr int16_t kMenuDetailY   = 32;
+-constexpr int16_t kMenuDetailW   = 120;
+-constexpr int16_t kMenuDetailH   = 118;
++constexpr uint8_t kMenuPageSize = 9;
++
++constexpr int16_t kMenuHeaderH    = 17;
++constexpr int16_t kMenuFooterY    = 153;
++constexpr int16_t kMenuFooterH    = 17;
++constexpr int16_t kMenuListX      = 4;
++constexpr int16_t kMenuListY      = 20;
++constexpr int16_t kMenuListW      = 181;
++constexpr int16_t kMenuListH      = 129;
++constexpr int16_t kMenuRowX       = 6;
++constexpr int16_t kMenuRowStartY  = 22;
++constexpr int16_t kMenuRowW       = 177;
++constexpr int16_t kMenuRowH       = 12;
++constexpr int16_t kMenuRowPitch   = 14;
++constexpr int16_t kMenuScrollX    = 186;
++constexpr int16_t kMenuDetailX    = 193;
++constexpr int16_t kMenuDetailY    = 20;
++constexpr int16_t kMenuDetailW    = 123;
++constexpr int16_t kMenuDetailH    = 129;
+ 
+ struct MainMenuInsight {
+     const char* line1;
+@@ -92,37 +89,66 @@ uint8_t menuPageCount()
+     return static_cast<uint8_t>((kPageCount + kMenuPageSize - 1) / kMenuPageSize);
+ }
+ 
++int8_t batterySocPercent()
++{
++    // "SOC: 85%" / "SOC: --" -> 85 / -1
++    const String soc = page_battery::menuPreviewLine1();
++    if (!soc.startsWith("SOC: ")) {
++        return -1;
++    }
++    String value = soc.substring(5);
++    value.replace("%", "");
++    value.trim();
++    if (value.isEmpty() || !isDigit(value.charAt(0))) {
++        return -1;
++    }
++    return static_cast<int8_t>(constrain(value.toInt(), 0, 100));
++}
++
+ template <typename Canvas>
+ void drawMenuBackground(Canvas& gfx)
+ {
+-    gfx.fillRect(0, 0, gfx.width(), gfx.height(), kMenuBg);
++    gfx.fillRect(0, 0, gfx.width(), gfx.height(), kFlipperWhite);
+ }
+ 
+ template <typename Canvas>
+ void drawMenuHeader(Canvas& gfx)
+ {
+     const int16_t W = gfx.width();
+-    const uint8_t idx = selectedMenuIndex();
+ 
+-    gfx.fillRect(0, 0, W, kMenuHeaderH, kMenuPanel);
+-    gfx.drawFastHLine(0, kMenuHeaderH - 1, W, kMenuPanelEdge);
++    gfx.fillRect(0, 0, W, kMenuHeaderH, kFlipperWhite);
++
++    // "T" tile logo, like a Flipper app icon
++    gfx.fillRoundRect(4, 4, 9, 9, 2, kFlipperBlack);
++    gfx.setTextDatum(MC_DATUM);
++    gfx.setTextColor(kFlipperWhite, kFlipperBlack);
++    gfx.drawString("T", 8, 8, 1);
+ 
+     gfx.setTextDatum(TL_DATUM);
+-    gfx.setTextColor(kMenuText, kMenuPanel);
+-    gfx.drawString("Factory Test", 8, 4, 2);
+-    gfx.setTextColor(kMenuSubText, kMenuPanel);
+-    if (menuPageCount() > 1) {
+-        gfx.drawString(String("Page ") + menuPageNumber() + "/" + menuPageCount(), 108, 6, 1);
++    gfx.setTextColor(kFlipperBlack, kFlipperWhite);
++    gfx.drawString("T-Embed CC1101", 17, 5, 1);
++
++    gfx.setTextColor(kFlipperGray, kFlipperWhite);
++    gfx.drawString(String(menuPageNumber()) + "/" + String(menuPageCount()), 107, 5, 1);
++
++    // Battery glyph + SOC, Flipper status bar style
++    const int16_t batX = W - 17;
++    const int8_t soc = batterySocPercent();
++    if (soc >= 0) {
++        gfx.setTextColor(soc <= 20 ? kFlipperOrange : kFlipperGray, kFlipperWhite);
++        gfx.drawRightString(String(soc) + "%", batX - 3, 5, 1);
+     } else {
+-        gfx.drawString("Select a module", 108, 6, 1);
++        gfx.setTextColor(kFlipperGray, kFlipperWhite);
++        gfx.drawRightString("--", batX - 3, 5, 1);
++    }
++    gfx.drawRect(batX, 5, 11, 7, kFlipperBlack);
++    gfx.fillRect(batX + 11, 7, 2, 3, kFlipperBlack);
++    if (soc > 0) {
++        const int16_t fillW = static_cast<int16_t>((9L * soc) / 100L);
++        gfx.fillRect(batX + 1, 6, fillW, 5, soc <= 20 ? kFlipperOrange : kFlipperBlack);
+     }
+ 
+-    char pageBuf[12];
+-    snprintf(pageBuf, sizeof(pageBuf), "%02u/%02u",
+-             static_cast<unsigned>(idx + 1),
+-             static_cast<unsigned>(kPageCount));
+-    gfx.setTextColor(kMenuAccent, kMenuPanel);
+-    gfx.drawRightString(pageBuf, W - 8, 6, 1);
++    gfx.drawFastHLine(0, kMenuHeaderH, W, kFlipperBlack);
+ }
+ 
+ template <typename Canvas>
+@@ -132,28 +158,42 @@ void drawMenuList(Canvas& gfx)
+     const uint8_t start = menuPageStart();
+     const uint8_t count = menuVisibleCount();
+ 
+-    gfx.fillRoundRect(kMenuListX, kMenuListY, kMenuListW, kMenuListH, 6, kMenuPanel);
+-    gfx.drawRoundRect(kMenuListX, kMenuListY, kMenuListW, kMenuListH, 6, kMenuPanelEdge);
+-
+     for (uint8_t row = 0; row < count; ++row) {
+         const uint8_t i = start + row;
+         const int16_t y = kMenuRowStartY + row * kMenuRowPitch;
+         const bool isSelected = (selected == i);
+-        const uint16_t rowBg = isSelected ? kMenuPanelSoft : kMenuPanel;
+ 
+-        gfx.fillRoundRect(kMenuRowX, y, kMenuRowW, kMenuRowH, 4, rowBg);
+         if (isSelected) {
+-            gfx.fillRect(kMenuRowX + 1, y + 1, 3, kMenuRowH - 2, kMenuAccent);
+-            gfx.drawRoundRect(kMenuRowX, y, kMenuRowW, kMenuRowH, 4, kMenuAccent);
++            gfx.fillRoundRect(kMenuRowX - 2, y, kMenuRowW, kMenuRowH, 4, kFlipperBlack);
+         }
+ 
+-        char num[4];
+-        snprintf(num, sizeof(num), "%02u", static_cast<unsigned>(i + 1));
+-        gfx.setTextColor(isSelected ? kMenuAccent : kMenuSubText, rowBg);
+-        gfx.drawString(num, kMenuRowX + 8, y + 1, 1);
++        const uint16_t fg = isSelected ? kFlipperWhite : kFlipperBlack;
++        const uint16_t bg = isSelected ? kFlipperBlack : kFlipperWhite;
+ 
+-        gfx.setTextColor(kMenuText, rowBg);
+-        gfx.drawString(kPages[i].label, kMenuRowX + 28, y + 1, 1);
++        drawFlipperIcon(gfx, i, kMenuRowX + 2, y + 2, fg);
++
++        gfx.setTextColor(fg, bg);
++        gfx.drawString(kPages[i].label, kMenuRowX + 15, y + 2, 1);
++
++        if (isSelected) {
++            gfx.setTextColor(kFlipperWhite, kFlipperBlack);
++            gfx.drawRightString(">", kMenuRowX - 2 + kMenuRowW - 5, y + 2, 1);
++        }
++    }
++
++    // Flipper style scrollbar
++    if (kPageCount > kMenuPageSize) {
++        const int16_t trackY = kMenuListY + 2;
++        const int16_t trackH = kMenuListH - 6;
++        gfx.drawFastVLine(kMenuScrollX + 1, trackY, trackH, kFlipperGrayLt);
++
++        const int16_t thumbH = static_cast<int16_t>(
++            (static_cast<int32_t>(trackH) * count) / kPageCount);
++        const int16_t maxOff = trackH - thumbH;
++        const int16_t off = (kPageCount - count) == 0
++            ? 0
++            : static_cast<int16_t>((static_cast<int32_t>(maxOff) * start) / (kPageCount - count));
++        gfx.fillRect(kMenuScrollX, trackY + off, 3, thumbH, kFlipperBlack);
+     }
+ }
+ 
+@@ -164,43 +204,50 @@ void drawMenuDetail(Canvas& gfx)
+     const MainMenuInsight& info = kMainMenuInsights[idx];
+     String line1 = info.line1;
+     String line2 = info.line2;
+-    uint16_t line1Color = kMenuSubText;
+-    uint16_t line2Color = kMenuSubText;
++    uint16_t line1Color = kFlipperGray;
++    uint16_t line2Color = kFlipperGray;
+     if (idx == 0) {
+         line1 = page_battery::menuPreviewLine1();
+         line2 = page_battery::menuPreviewLine2();
+         line1Color = page_battery::menuPreviewLine1Color();
+         line2Color = page_battery::menuPreviewLine2Color();
++        if (line1Color == TFT_LIGHTGREY) line1Color = kFlipperGray;
++        if (line2Color == TFT_LIGHTGREY) line2Color = kFlipperGray;
+     }
+     const int16_t x = kMenuDetailX;
+     const int16_t y = kMenuDetailY;
+     const int16_t w = kMenuDetailW;
+ 
+-    gfx.fillRoundRect(x, y, kMenuDetailW, kMenuDetailH, 6, kMenuPanel);
+-    gfx.drawRoundRect(x, y, kMenuDetailW, kMenuDetailH, 6, kMenuPanelEdge);
++    gfx.fillRoundRect(x, y, w, kMenuDetailH, 4, kFlipperWhite);
++    gfx.drawRoundRect(x, y, w, kMenuDetailH, 4, kFlipperBlack);
+ 
+-    gfx.setTextColor(kMenuSubText, kMenuPanel);
++    gfx.setTextColor(kFlipperGray, kFlipperWhite);
+     gfx.drawString("Current", x + 8, y + 6, 1);
+ 
+-    gfx.setTextColor(kMenuText, kMenuPanel);
+-    gfx.drawString(clipMenuText(String(kPages[idx].label), 16).c_str(), x + 8, y + 20, 1);
++    gfx.setTextColor(kFlipperBlack, kFlipperWhite);
++    gfx.drawString(clipMenuText(String(kPages[idx].label), 19).c_str(), x + 8, y + 17, 1);
++
++    gfx.setTextColor(line1Color, kFlipperWhite);
++    gfx.drawString(clipMenuText(line1, 19).c_str(), x + 8, y + 29, 1);
++    gfx.setTextColor(line2Color, kFlipperWhite);
++    gfx.drawString(clipMenuText(line2, 19).c_str(), x + 8, y + 39, 1);
+ 
+-    gfx.setTextColor(line1Color, kMenuPanel);
+-    gfx.drawString(clipMenuText(line1, 16).c_str(), x + 8, y + 34, 1);
+-    gfx.setTextColor(line2Color, kMenuPanel);
+-    gfx.drawString(clipMenuText(line2, 16).c_str(), x + 8, y + 44, 1);
++    gfx.drawFastHLine(x + 8, y + 49, w - 16, kFlipperGrayLt);
+ 
+-    gfx.drawFastHLine(x + 8, y + 58, w - 16, kMenuPanelEdge);
++    gfx.setTextColor(kFlipperGray, kFlipperWhite);
++    gfx.drawString("Rotation", x + 8, y + 55, 1);
++    gfx.drawString("Sleep", x + 8, y + 65, 1);
++    gfx.drawString("Dim", x + 8, y + 75, 1);
+ 
+-    gfx.setTextColor(kMenuAccent, kMenuPanel);
+-    gfx.drawString("Rotation", x + 8, y + 66, 1);
+-    gfx.drawString("Sleep", x + 8, y + 80, 1);
+-    gfx.drawString("Dim", x + 8, y + 94, 1);
++    gfx.setTextColor(kFlipperBlack, kFlipperWhite);
++    gfx.drawRightString(clipMenuText(currentRotationLabel(), 10).c_str(), x + w - 8, y + 55, 1);
++    gfx.drawRightString(clipMenuText(autoSleepPresetLabel(), 10).c_str(), x + w - 8, y + 65, 1);
++    gfx.drawRightString(clipMenuText(autoDimTimeoutLabel(), 10).c_str(), x + w - 8, y + 75, 1);
+ 
+-    gfx.setTextColor(kMenuText, kMenuPanel);
+-    gfx.drawRightString(clipMenuText(currentRotationLabel(), 10).c_str(), x + w - 8, y + 66, 1);
+-    gfx.drawRightString(clipMenuText(autoSleepPresetLabel(), 10).c_str(), x + w - 8, y + 80, 1);
+-    gfx.drawRightString(clipMenuText(autoDimTimeoutLabel(), 10).c_str(), x + w - 8, y + 94, 1);
++    gfx.drawFastHLine(x + 8, y + 85, w - 16, kFlipperGrayLt);
++
++    // Mini dolphin mascot
++    drawFlipperDolphin(gfx, x + w / 2, y + kMenuDetailH - 17, 1, kFlipperBlack, kFlipperWhite);
+ }
+ 
+ template <typename Canvas>
+@@ -208,18 +255,19 @@ void drawMenuFooter(Canvas& gfx)
+ {
+     const int16_t W = gfx.width();
+ 
+-    gfx.fillRect(0, kMenuFooterY, W, kMenuFooterH, kMenuFooter);
+-    gfx.drawFastHLine(0, kMenuFooterY, W, kMenuPanelEdge);
++    gfx.fillRect(0, kMenuFooterY, W, kMenuFooterH, kFlipperWhite);
++    gfx.drawFastHLine(0, kMenuFooterY, W, kFlipperBlack);
+ 
+-    gfx.setTextColor(kMenuSubText, kMenuFooter);
+-    gfx.drawString("ENC scroll", 8, kMenuFooterY + 5, 1);
+-    gfx.drawCentreString("BOOT open", W / 2, kMenuFooterY + 5, 1);
+-    gfx.drawRightString("USER next", W - 8, kMenuFooterY + 5, 1);
++    gfx.setTextColor(kFlipperBlack, kFlipperWhite);
++    gfx.drawString("ENC scroll", 6, kMenuFooterY + 6, 1);
++    gfx.drawCentreString("OK open", W / 2, kMenuFooterY + 6, 1);
++    gfx.drawRightString("USR next", W - 6, kMenuFooterY + 6, 1);
+ }
+ 
+ template <typename Canvas>
+ void drawMenuUi(Canvas& gfx)
+ {
++    gfx.setTextDatum(TL_DATUM);
+     drawMenuBackground(gfx);
+     drawMenuHeader(gfx);
+     drawMenuList(gfx);
+diff --git a/examples/factory/page_battery.h b/examples/factory/page_battery.h
+index b407dc9..5a4bdbd 100644
+--- a/examples/factory/page_battery.h
++++ b/examples/factory/page_battery.h
+@@ -235,11 +235,11 @@ const char* stateLabel(const UiState state)
+ uint16_t stateColor(const UiState state)
+ {
+     switch (state) {
+-        case UiState::Init:         return TFT_CYAN;
++        case UiState::Init:         return 0x0410;
+         case UiState::Charging:     return TFT_GREEN;
+-        case UiState::ChargeDone:   return TFT_YELLOW;
++        case UiState::ChargeDone:   return TFT_ORANGE;
+         case UiState::Discharging:  return TFT_ORANGE;
+-        case UiState::Idle:         return TFT_LIGHTGREY;
++        case UiState::Idle:         return kUiMuted;
+         case UiState::BqConfigWarn: return TFT_RED;
+         case UiState::Error:        return TFT_RED;
+         default:                    return TFT_WHITE;
+@@ -293,12 +293,12 @@ uint16_t menuChargeStatusColor(const uint8_t status, const bool vbusPresent)
+         case XPowersPPM::CHARGE_STATE_FAST_CHARGE:
+             return TFT_GREEN;
+         case XPowersPPM::CHARGE_STATE_DONE:
+-            return TFT_YELLOW;
++            return TFT_ORANGE;
+         case XPowersPPM::CHARGE_STATE_NO_CHARGE:
+-            return vbusPresent ? TFT_CYAN : TFT_ORANGE;
++            return vbusPresent ? 0x0410 : TFT_ORANGE;
+         case XPowersPPM::CHARGE_STATE_UNKOWN:
+         default:
+-            return TFT_LIGHTGREY;
++            return kUiMuted;
+     }
+ }
+ 
+@@ -369,9 +369,9 @@ void drawHeader()
+ void drawFooter()
+ {
+     const int16_t footerY = tft.height() - kFooterH;
+-    tft.fillRect(0, footerY, tft.width(), kFooterH, TFT_DARKGREY);
++    tft.fillRect(0, footerY, tft.width(), kFooterH, kUiPanel);
+     tft.setTextDatum(TL_DATUM);
+-    tft.setTextColor(TFT_WHITE, TFT_DARKGREY);
++    tft.setTextColor(TFT_BLACK, kUiPanel);
+     const char* text = focus == FocusItem::Back
+         ? "ENC press=back  USER hold=shutdown"
+         : "TURN=BACK  USER hold=shutdown";
+@@ -381,11 +381,11 @@ void drawFooter()
+ 
+ void drawStaticFrame()
+ {
+-    tft.fillScreen(TFT_BLACK);
++    tft.fillScreen(kUiBg);
+     drawHeader();
+     drawFooter();
+ 
+-    tft.setTextColor(TFT_CYAN, TFT_BLACK);
++    tft.setTextColor(kUiAccent, TFT_WHITE);
+     tft.drawString("SOC", kLeftX, kRow0, 1);
+     tft.drawString("VBAT", kLeftX, kRow0 + kRowGap, 1);
+     tft.drawString("IBAT", kLeftX, kRow0 + kRowGap * 2, 1);
+@@ -403,21 +403,21 @@ void drawStaticFrame()
+ 
+ void drawStatusArea()
+ {
+-    tft.fillRect(kStateX, kStateY, 220, 26, TFT_BLACK);
+-    tft.setTextColor(stateColor(uiState), TFT_BLACK);
++    tft.fillRect(kStateX, kStateY, 220, 26, TFT_WHITE);
++    tft.setTextColor(stateColor(uiState), TFT_WHITE);
+     tft.drawString(stateLabel(uiState), kStateX, kStateY, 4);
+     lastDrawnUiState = uiState;
+ 
+     const String detail = currentDetail();
+-    tft.fillRect(kDetailX, kDetailY, 304, 10, TFT_BLACK);
+-    tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
++    tft.fillRect(kDetailX, kDetailY, 304, 10, TFT_WHITE);
++    tft.setTextColor(TFT_BLACK, TFT_WHITE);
+     tft.drawString(detail, kDetailX, kDetailY, 1);
+     lastDrawnDetail = detail;
+ }
+ 
+ void drawMetricValues()
+ {
+-    tft.setTextColor(TFT_WHITE, TFT_BLACK);
++    tft.setTextColor(TFT_BLACK, TFT_WHITE);
+     tft.drawString(String(metrics.soc) + "%   ", kLeftValueX, kRow0, 1);
+     tft.drawString(formatVoltage(metrics.bqVoltageMv) + "   ", kLeftValueX, kRow0 + kRowGap, 1);
+     tft.drawString(formatSignedMilliamp(metrics.ibatMa) + "   ", kLeftValueX, kRow0 + kRowGap * 2, 1);
+@@ -1325,7 +1325,7 @@ uint16_t menuPreviewLine1Color()
+     if (hasMetrics || previewSocValid) {
+         return TFT_GREEN;
+     }
+-    return TFT_LIGHTGREY;
++    return kUiMuted;
+ }
+ 
+ uint16_t menuPreviewLine2Color()
+@@ -1338,7 +1338,7 @@ uint16_t menuPreviewLine2Color()
+     if (previewChargeValid) {
+         return menuChargeStatusColor(previewChargeStatus, previewVbusPresent);
+     }
+-    return TFT_LIGHTGREY;
++    return kUiMuted;
+ }
+ 
+ }  // namespace page_battery
+diff --git a/examples/factory/page_cc1101.h b/examples/factory/page_cc1101.h
+index d64304f..65d9467 100644
+--- a/examples/factory/page_cc1101.h
++++ b/examples/factory/page_cc1101.h
+@@ -225,11 +225,11 @@ void checkLedTimeout()
+ 
+ void drawHeader()
+ {
+-    tft.fillRect(0, 0, tft.width(), kHeaderHeight, TFT_NAVY);
+-    tft.setTextColor(TFT_WHITE, TFT_NAVY);
++    tft.fillRect(0, 0, tft.width(), kHeaderHeight, TFT_WHITE);
++    tft.setTextColor(TFT_BLACK, TFT_WHITE);
+     tft.drawString("CC1101 Send / Recv", kMarginLeft, 6, 2);
+     tft.setTextDatum(TR_DATUM);
+-    tft.setTextColor(TFT_CYAN, TFT_NAVY);
++    tft.setTextColor(kUiAccent, TFT_WHITE);
+     tft.drawString("Factory", tft.width() - kMargin, 7, 1);
+     tft.setTextDatum(TL_DATUM);
+ }
+@@ -237,33 +237,33 @@ void drawHeader()
+ void drawFooter(const char* msg)
+ {
+     const int16_t y = tft.height() - kFooterHeight;
+-    tft.fillRect(0, y, tft.width(), kFooterHeight, TFT_DARKGREY);
+-    tft.setTextColor(TFT_WHITE, TFT_DARKGREY);
++    tft.fillRect(0, y, tft.width(), kFooterHeight, kUiPanel);
++    tft.setTextColor(TFT_BLACK, kUiPanel);
+     tft.drawString(msg, kMarginLeft, y + 3, 1);
+     drawBackButton(backFocused);
+ }
+ 
+ void drawFreqRow()
+ {
+-    tft.fillRect(0, kRowFreq, tft.width(), 28, TFT_BLACK);
+-    tft.setTextColor(TFT_CYAN, TFT_BLACK);
++    tft.fillRect(0, kRowFreq, tft.width(), 28, TFT_WHITE);
++    tft.setTextColor(kUiAccent, TFT_WHITE);
+     tft.drawString("FREQ:", kMarginLeft, kRowFreq + 8, 1);
+ 
+     uint16_t color = TFT_ORANGE;
+     if (currentFreqIndex == 0) {
+         color = TFT_GREEN;
+     } else if (currentFreqIndex == 1) {
+-        color = TFT_YELLOW;
++        color = TFT_ORANGE;
+     }
+ 
+-    tft.setTextColor(color, TFT_BLACK);
++    tft.setTextColor(color, TFT_WHITE);
+     tft.drawString(currentFrequencyLabel(), kMarginLeft + 50, kRowFreq, 4);
+ }
+ 
+ void drawModeRow()
+ {
+-    tft.fillRect(0, kRowMode, tft.width(), 18, TFT_BLACK);
+-    tft.setTextColor(TFT_CYAN, TFT_BLACK);
++    tft.fillRect(0, kRowMode, tft.width(), 18, TFT_WHITE);
++    tft.setTextColor(kUiAccent, TFT_WHITE);
+     tft.drawString("MODE:", kMarginLeft, kRowMode + 2, 1);
+ 
+     uint16_t color = TFT_WHITE;
+@@ -285,7 +285,7 @@ void drawModeRow()
+             break;
+     }
+ 
+-    tft.setTextColor(color, TFT_BLACK);
++    tft.setTextColor(color, TFT_WHITE);
+     tft.drawString(label, kMarginLeft + 50, kRowMode, 2);
+ }
+ 
+@@ -296,13 +296,13 @@ void drawDivider()
+ 
+ void drawReceiveRows()
+ {
+-    tft.fillRect(0, kRowInfo1, tft.width(), tft.height() - kFooterHeight - kRowInfo1, TFT_BLACK);
++    tft.fillRect(0, kRowInfo1, tft.width(), tft.height() - kFooterHeight - kRowInfo1, TFT_WHITE);
+ 
+-    tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
++    tft.setTextColor(TFT_BLACK, TFT_WHITE);
+     tft.drawString("Last RX:", kMarginLeft, kRowInfo1, 1);
+ 
+     if (!hasLastRx) {
+-        tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
++        tft.setTextColor(kUiMuted, TFT_WHITE);
+         tft.drawString("(none)", kMarginLeft + 56, kRowInfo1, 1);
+         return;
+     }
+@@ -312,69 +312,69 @@ void drawReceiveRows()
+         payload = payload.substring(0, 35) + "...";
+     }
+ 
+-    tft.setTextColor(TFT_WHITE, TFT_BLACK);
++    tft.setTextColor(TFT_BLACK, TFT_WHITE);
+     tft.drawString(payload, kMarginLeft, kRowInfo2, 1);
+ 
+     char line[48];
+     snprintf(line, sizeof(line), "RSSI: %.0f dBm   LQI: %u", lastRxRssi, static_cast<unsigned>(lastRxLqi));
+-    tft.setTextColor(TFT_CYAN, TFT_BLACK);
++    tft.setTextColor(kUiAccent, TFT_WHITE);
+     tft.drawString(line, kMarginLeft, kRowInfo3, 1);
+ 
+     snprintf(line, sizeof(line), "RX count: %lu", static_cast<unsigned long>(rxCounter));
+-    tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
++    tft.setTextColor(TFT_BLACK, TFT_WHITE);
+     tft.drawString(line, kMarginLeft, kRowInfo4, 1);
+ }
+ 
+ void drawTransmitRows()
+ {
+-    tft.fillRect(0, kRowInfo1, tft.width(), tft.height() - kFooterHeight - kRowInfo1, TFT_BLACK);
++    tft.fillRect(0, kRowInfo1, tft.width(), tft.height() - kFooterHeight - kRowInfo1, TFT_WHITE);
+ 
+-    tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
++    tft.setTextColor(TFT_BLACK, TFT_WHITE);
+     tft.drawString("Burst TX:", kMarginLeft, kRowInfo1, 1);
+ 
+     char line[64];
+     snprintf(line, sizeof(line), "Every %lu ms", static_cast<unsigned long>(kBurstIntervalMs));
+-    tft.setTextColor(TFT_CYAN, TFT_BLACK);
++    tft.setTextColor(kUiAccent, TFT_WHITE);
+     tft.drawString(line, kMarginLeft, kRowInfo2, 1);
+ 
+     snprintf(line, sizeof(line), "TX count: %lu", static_cast<unsigned long>(burstCounter));
+-    tft.setTextColor(TFT_WHITE, TFT_BLACK);
++    tft.setTextColor(TFT_BLACK, TFT_WHITE);
+     tft.drawString(line, kMarginLeft, kRowInfo3, 2);
+ 
+     String prefix = burstPrefix;
+     if (prefix.length() > 32) {
+         prefix = prefix.substring(0, 29) + "...";
+     }
+-    tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
++    tft.setTextColor(TFT_BLACK, TFT_WHITE);
+     tft.drawString(prefix, kMarginLeft, kRowInfo4, 1);
+ }
+ 
+ void drawSniffRows()
+ {
+-    tft.fillRect(0, kRowInfo1, tft.width(), tft.height() - kFooterHeight - kRowInfo1, TFT_BLACK);
++    tft.fillRect(0, kRowInfo1, tft.width(), tft.height() - kFooterHeight - kRowInfo1, TFT_WHITE);
+ 
+-    tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
++    tft.setTextColor(TFT_BLACK, TFT_WHITE);
+     tft.drawString("OOK sniff:", kMarginLeft, kRowInfo1, 1);
+ 
+     char line[64];
+     snprintf(line, sizeof(line), "Edges: %lu   Bursts: %lu",
+              static_cast<unsigned long>(totalEdges),
+              static_cast<unsigned long>(burstCount));
+-    tft.setTextColor(TFT_WHITE, TFT_BLACK);
++    tft.setTextColor(TFT_BLACK, TFT_WHITE);
+     tft.drawString(line, kMarginLeft, kRowInfo2, 1);
+ 
+     if (lastBurstPulses > 0) {
+         snprintf(line, sizeof(line), "Last: %u pulses", static_cast<unsigned>(lastBurstPulses));
+-        tft.setTextColor(TFT_CYAN, TFT_BLACK);
++        tft.setTextColor(kUiAccent, TFT_WHITE);
+         tft.drawString(line, kMarginLeft, kRowInfo3, 1);
+ 
+         snprintf(line, sizeof(line), "S~%luus L~%luus",
+                  static_cast<unsigned long>(lastBurstShortUs),
+                  static_cast<unsigned long>(lastBurstLongUs));
+-        tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
++        tft.setTextColor(TFT_BLACK, TFT_WHITE);
+         tft.drawString(line, kMarginLeft, kRowInfo4, 1);
+     } else {
+-        tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
++        tft.setTextColor(kUiMuted, TFT_WHITE);
+         tft.drawString("Press the remote near antenna...", kMarginLeft, kRowInfo3, 1);
+     }
+ }
+@@ -385,9 +385,9 @@ void redrawAll()
+ 
+     if (needFullRedraw) {
+         needFullRedraw = false;
+-        tft.fillRect(0, 0, tft.width(), tft.height(), TFT_BLACK);
++        tft.fillRect(0, 0, tft.width(), tft.height(), TFT_WHITE);
+         drawHeader();
+-        tft.fillRect(0, kHeaderHeight, tft.width(), tft.height() - kHeaderHeight - kFooterHeight, TFT_BLACK);
++        tft.fillRect(0, kHeaderHeight, tft.width(), tft.height() - kHeaderHeight - kFooterHeight, TFT_WHITE);
+         drawFreqRow();
+         drawModeRow();
+         drawDivider();
+diff --git a/examples/factory/page_ir.h b/examples/factory/page_ir.h
+index 8c6cbe9..0e5c2a7 100644
+--- a/examples/factory/page_ir.h
++++ b/examples/factory/page_ir.h
+@@ -61,10 +61,10 @@ constexpr uint32_t kEchoWindowMs = 250;
+ constexpr uint32_t kFrameMs = 60;
+ constexpr uint8_t kLoopFlashLed = 180;
+ 
+-constexpr uint16_t kBg = TFT_BLACK;
+-constexpr uint16_t kHeader = 0x04FF;
+-constexpr uint16_t kPanelTx = 0x18E3;
+-constexpr uint16_t kPanelRx = 0x12CB;
++constexpr uint16_t kBg = TFT_WHITE;
++constexpr uint16_t kHeader = TFT_WHITE;
++constexpr uint16_t kPanelTx = 0xFF59;
++constexpr uint16_t kPanelRx = 0xD77F;
+ constexpr uint16_t kLabel = TFT_DARKGREY;
+ constexpr uint16_t kLoopBg = 0x6200;
+ constexpr uint16_t kLoopAccent = 0xC81F;
+@@ -320,12 +320,12 @@ void drawHeader(Canvas& gfx)
+ {
+     gfx.fillRect(0, 0, gfx.width(), kHeaderHeight, kHeader);
+     gfx.setTextDatum(TL_DATUM);
+-    gfx.setTextColor(TFT_WHITE, kHeader);
++    gfx.setTextColor(TFT_BLACK, kHeader);
+     gfx.drawCentreString("IR TX / RX Test", gfx.width() / 2, 4, 2);
+ 
+     if (loopbackMode) {
+         gfx.fillRoundRect(gfx.width() - 70, 3, 66, 16, 4, kLoopBg);
+-        gfx.setTextColor(TFT_YELLOW, kLoopBg);
++        gfx.setTextColor(0xFFE0, kLoopBg);
+         gfx.drawCentreString("LOOP", gfx.width() - 37, 6, 1);
+     }
+ }
+@@ -356,14 +356,14 @@ void drawTxPanel(Canvas& gfx)
+     const int16_t w = gfx.width() - 12;
+     const int16_t y = kPanelTxY;
+     gfx.fillRoundRect(x, y, w, kPanelH, 6, kPanelTx);
+-    gfx.drawRoundRect(x, y, w, kPanelH, 6, TFT_DARKGREY);
++    gfx.drawRoundRect(x, y, w, kPanelH, 6, TFT_BLACK);
+ 
+     gfx.setTextColor(TFT_ORANGE, kPanelTx);
+     gfx.drawString("TX", x + 8, y + 3, 2);
+-    gfx.setTextColor(TFT_CYAN, kPanelTx);
++    gfx.setTextColor(0x0410, kPanelTx);
+     gfx.drawString(txInfo.valid ? txInfo.protocol : "--", x + 60, y + 6, 1);
+ 
+-    gfx.setTextColor(TFT_WHITE, kPanelTx);
++    gfx.setTextColor(TFT_BLACK, kPanelTx);
+     gfx.drawString(txInfo.valid ? txInfo.name : "--", x + 8, y + 18, 2);
+     gfx.drawRightString(clipText(txInfo.valueHex, 18), x + w - 8, y + 18, 1);
+ 
+@@ -371,7 +371,7 @@ void drawTxPanel(Canvas& gfx)
+     snprintf(meta, sizeof(meta), "bits:%u  x%lu",
+              static_cast<unsigned>(txInfo.bits),
+              static_cast<unsigned long>(txInfo.count));
+-    gfx.setTextColor(TFT_YELLOW, kPanelTx);
++    gfx.setTextColor(TFT_ORANGE, kPanelTx);
+     gfx.drawString(meta, x + 8, y + 33, 1);
+     gfx.drawRightString(fmtElapsed(txInfo.lastMs), x + w - 8, y + 33, 1);
+ }
+@@ -383,11 +383,11 @@ void drawRxPanel(Canvas& gfx)
+     const int16_t w = gfx.width() - 12;
+     const int16_t y = kPanelRxY;
+     gfx.fillRoundRect(x, y, w, kPanelH, 6, kPanelRx);
+-    gfx.drawRoundRect(x, y, w, kPanelH, 6, TFT_DARKGREY);
++    gfx.drawRoundRect(x, y, w, kPanelH, 6, TFT_BLACK);
+ 
+     gfx.setTextColor(TFT_GREENYELLOW, kPanelRx);
+     gfx.drawString("RX", x + 8, y + 3, 2);
+-    gfx.setTextColor(TFT_WHITE, kPanelRx);
++    gfx.setTextColor(TFT_BLACK, kPanelRx);
+     gfx.drawString(rxInfo.valid ? clipText(rxInfo.protocol, 18) : String("waiting..."), x + 60, y + 3, 2);
+ 
+     if (loopbackMode && rxInfo.valid && txInfo.valid && rxInfo.valueHex == txInfo.valueHex) {
+@@ -396,14 +396,14 @@ void drawRxPanel(Canvas& gfx)
+         gfx.drawCentreString("OK", x + w - 25, y + 6, 1);
+     }
+ 
+-    gfx.setTextColor(TFT_WHITE, kPanelRx);
++    gfx.setTextColor(TFT_BLACK, kPanelRx);
+     gfx.drawString(clipText(rxInfo.valueHex, 22), x + 8, y + 18, 1);
+ 
+     char meta[40];
+     snprintf(meta, sizeof(meta), "bits:%u  x%lu",
+              static_cast<unsigned>(rxInfo.bits),
+              static_cast<unsigned long>(rxInfo.count));
+-    gfx.setTextColor(TFT_YELLOW, kPanelRx);
++    gfx.setTextColor(TFT_ORANGE, kPanelRx);
+     gfx.drawString(meta, x + 8, y + 33, 1);
+     gfx.drawRightString(fmtElapsed(rxInfo.lastMs), x + w - 8, y + 33, 1);
+ }
+@@ -416,9 +416,9 @@ void drawActionButton(Canvas& gfx,
+                       const bool active,
+                       const uint16_t activeColor)
+ {
+-    uint16_t bg = TFT_DARKGREY;
+-    uint16_t fg = TFT_LIGHTGREY;
+-    uint16_t border = 0x52AA;
++    uint16_t bg = kUiPanel;
++    uint16_t fg = TFT_BLACK;
++    uint16_t border = TFT_BLACK;
+ 
+     if (active) {
+         bg = activeColor;
+@@ -427,12 +427,12 @@ void drawActionButton(Canvas& gfx,
+     }
+     if (selected) {
+         if (active) {
+-            border = TFT_YELLOW;
++            border = kUiAccent;
+             fg = TFT_BLACK;
+         } else {
+             bg = TFT_WHITE;
+             fg = TFT_BLACK;
+-            border = TFT_YELLOW;
++            border = kUiAccent;
+         }
+     }
+ 
+@@ -446,9 +446,9 @@ template <typename Canvas>
+ void drawFooter(Canvas& gfx)
+ {
+     const int16_t y = gfx.height() - kFooterH;
+-    gfx.fillRect(0, y, gfx.width(), kFooterH, TFT_DARKGREY);
++    gfx.fillRect(0, y, gfx.width(), kFooterH, kUiPanel);
+     gfx.setTextDatum(TL_DATUM);
+-    gfx.setTextColor(TFT_WHITE, TFT_DARKGREY);
++    gfx.setTextColor(TFT_BLACK, kUiPanel);
+     if (footerFocus == FooterFocus::Back) {
+         gfx.drawString("BOOT back", kMargin, y + 4, 1);
+     } else if (footerFocus == FooterFocus::Loop) {
+diff --git a/examples/factory/page_mic.h b/examples/factory/page_mic.h
+index 937a7f3..611b303 100644
+--- a/examples/factory/page_mic.h
++++ b/examples/factory/page_mic.h
+@@ -58,13 +58,13 @@ constexpr float kToneFreqs[] = {440.0f, 1000.0f, 880.0f};
+ constexpr float kTwoPi = 6.28318530718f;
+ constexpr size_t kLoopBufSamples = 8192;
+ 
+-constexpr uint16_t kColorBg = 0x0841;
+-constexpr uint16_t kColorPanel = 0x1082;
+-constexpr uint16_t kColorPanelEdge = 0x31A6;
+-constexpr uint16_t kColorCard = 0x18C3;
+-constexpr uint16_t kColorMeterBg = 0x2104;
+-constexpr uint16_t kColorPassBg = 0x0A41;
+-constexpr uint16_t kColorFailBg = 0x3006;
++constexpr uint16_t kColorBg = 0xFFFF;
++constexpr uint16_t kColorPanel = 0xF79E;
++constexpr uint16_t kColorPanelEdge = 0x0000;
++constexpr uint16_t kColorCard = 0xFFFF;
++constexpr uint16_t kColorMeterBg = 0xE71C;
++constexpr uint16_t kColorPassBg = 0xE7DC;
++constexpr uint16_t kColorFailBg = 0xFEBA;
+ 
+ TFT_eSprite canvas(&tft);
+ State currentState = State::InitMic;
+@@ -448,10 +448,10 @@ uint16_t stateAccent()
+     switch (currentState) {
+         case State::InitMic:
+         case State::MicTest:
+-            return TFT_CYAN;
++            return 0x0410;
+         case State::InitSpeaker:
+         case State::SpeakerTest:
+-            return TFT_YELLOW;
++            return TFT_ORANGE;
+         case State::InitLoopback:
+         case State::LoopbackTest:
+             return TFT_ORANGE;
+@@ -559,14 +559,14 @@ StageStyle stageStyle(const StageStatus status, const uint16_t accent)
+ {
+     switch (status) {
+         case StageStatus::Active:
+-            return {kColorCard, accent, TFT_WHITE, accent, "RUN"};
++            return {kColorCard, accent, TFT_BLACK, accent, "RUN"};
+         case StageStatus::Pass:
+             return {kColorPassBg, TFT_GREEN, TFT_WHITE, TFT_GREEN, "PASS"};
+         case StageStatus::Fail:
+             return {kColorFailBg, TFT_RED, TFT_WHITE, TFT_RED, "FAIL"};
+         case StageStatus::Pending:
+         default:
+-            return {kColorCard, kColorPanelEdge, TFT_LIGHTGREY, TFT_DARKGREY, "WAIT"};
++            return {kColorCard, kColorPanelEdge, TFT_BLACK, kUiMuted, "WAIT"};
+     }
+ }
+ 
+@@ -576,7 +576,7 @@ uint16_t meterBarColor(const uint16_t width, const uint16_t fullWidth)
+         return TFT_GREEN;
+     }
+     if (width < (fullWidth * 85U / 100U)) {
+-        return TFT_YELLOW;
++        return TFT_ORANGE;
+     }
+     return TFT_RED;
+ }
+@@ -601,7 +601,7 @@ uint16_t levelColor(const uint16_t rms)
+         return TFT_DARKGREY;
+     }
+     if (rms < 500) {
+-        return TFT_CYAN;
++        return 0x0410;
+     }
+     if (rms < 2000) {
+         return TFT_GREEN;
+@@ -612,12 +612,12 @@ uint16_t levelColor(const uint16_t rms)
+ template <typename Canvas>
+ void drawHeader(Canvas& gfx)
+ {
+-    gfx.fillRect(0, 0, gfx.width(), kHeaderH, TFT_NAVY);
++    gfx.fillRect(0, 0, gfx.width(), kHeaderH, TFT_WHITE);
+     gfx.setTextDatum(TL_DATUM);
+-    gfx.setTextColor(TFT_WHITE, TFT_NAVY);
++    gfx.setTextColor(TFT_BLACK, TFT_WHITE);
+     gfx.drawString("Mic & Speaker Test", kUiMargin, 5, 2);
+     gfx.setTextDatum(TR_DATUM);
+-    gfx.setTextColor(TFT_CYAN, TFT_NAVY);
++    gfx.setTextColor(kUiAccent, TFT_WHITE);
+     gfx.drawString("16 kHz audio", gfx.width() - kUiMargin, 7, 1);
+     gfx.setTextDatum(TL_DATUM);
+ }
+@@ -626,9 +626,9 @@ template <typename Canvas>
+ void drawFooter(Canvas& gfx)
+ {
+     const int16_t y = gfx.height() - kFooterH;
+-    gfx.fillRect(0, y, gfx.width(), kFooterH, TFT_DARKGREY);
++    gfx.fillRect(0, y, gfx.width(), kFooterH, kUiPanel);
+     gfx.setTextDatum(TL_DATUM);
+-    gfx.setTextColor(TFT_WHITE, TFT_DARKGREY);
++    gfx.setTextColor(TFT_BLACK, kUiPanel);
+     if (backFocused) {
+         gfx.drawString("BOOT back", kUiMargin, y + 4, 1);
+     } else if (testDone()) {
+@@ -645,11 +645,11 @@ void drawBackButton(Canvas& gfx, const bool selected)
+     const int16_t h = 14;
+     const int16_t x = gfx.width() - w - 6;
+     const int16_t y = gfx.height() - kFooterH + 2;
+-    const uint16_t bg = selected ? TFT_WHITE : TFT_DARKGREY;
+-    const uint16_t fg = selected ? TFT_BLACK : TFT_LIGHTGREY;
++    const uint16_t bg = selected ? TFT_BLACK : kUiPanel;
++    const uint16_t fg = selected ? TFT_WHITE : TFT_BLACK;
+ 
+     gfx.fillRoundRect(x, y, w, h, 5, bg);
+-    gfx.drawRoundRect(x, y, w, h, 5, selected ? TFT_YELLOW : 0x52AA);
++    gfx.drawRoundRect(x, y, w, h, 5, selected ? kUiAccent : TFT_BLACK);
+     gfx.setTextColor(fg, bg);
+     gfx.drawCentreString("BACK", x + w / 2, y + 3, 1);
+ }
+@@ -672,8 +672,8 @@ void drawStageCard(Canvas& gfx, const int16_t x, const char* label, const StageS
+ template <typename Canvas>
+ void drawStageRow(Canvas& gfx)
+ {
+-    drawStageCard(gfx, kUiMargin, "MIC", micStage(), TFT_CYAN);
+-    drawStageCard(gfx, kUiMargin + kStageCardW + kStageGap, "SPK", spkStage(), TFT_YELLOW);
++    drawStageCard(gfx, kUiMargin, "MIC", micStage(), 0x0410);
++    drawStageCard(gfx, kUiMargin + kStageCardW + kStageGap, "SPK", spkStage(), TFT_ORANGE);
+     drawStageCard(gfx, kUiMargin + (kStageCardW + kStageGap) * 2, "LOOP", loopStage(), TFT_ORANGE);
+ }
+ 
+@@ -724,11 +724,11 @@ void drawActivePanel(Canvas& gfx)
+     gfx.drawRoundRect(kPanelX, kPanelY, kPanelW, kPanelH, 8, stateAccent());
+ 
+     gfx.setTextDatum(TL_DATUM);
+-    gfx.setTextColor(TFT_WHITE, kColorPanel);
++    gfx.setTextColor(TFT_BLACK, kColorPanel);
+     gfx.drawString(stateTitle(), kPanelX + 10, kPanelY + 7, 2);
+     drawProgressBar(gfx, kPanelX + kPanelW - 108, kPanelY + 10, 96, 8);
+ 
+-    gfx.setTextColor(TFT_LIGHTGREY, kColorPanel);
++    gfx.setTextColor(kUiMuted, kColorPanel);
+     gfx.drawString(stateHint(), kPanelX + 10, kPanelY + 24, 1);
+ 
+     if (currentState == State::MicTest || currentState == State::LoopbackTest) {
+@@ -740,7 +740,7 @@ void drawActivePanel(Canvas& gfx)
+         char freqBuf[16];
+         snprintf(freqBuf, sizeof(freqBuf), "%.0f Hz", kToneFreqs[freqIndex]);
+         gfx.setTextDatum(MC_DATUM);
+-        gfx.setTextColor(TFT_YELLOW, kColorPanel);
++        gfx.setTextColor(TFT_ORANGE, kColorPanel);
+         gfx.drawString(freqBuf, kPanelX + kPanelW / 2, kPanelY + 35, 4);
+         gfx.setTextDatum(TL_DATUM);
+         return;
+@@ -765,7 +765,7 @@ void drawMetricCard(Canvas& gfx, const int16_t x, const char* title, const char*
+     gfx.drawRoundRect(x, kMetricY, kMetricW, kMetricH, 6, borderColor);
+ 
+     gfx.setTextDatum(TL_DATUM);
+-    gfx.setTextColor(TFT_LIGHTGREY, kColorCard);
++    gfx.setTextColor(kUiMuted, kColorCard);
+     gfx.drawString(title, x + 6, kMetricY + 5, 1);
+ 
+     gfx.setTextDatum(TR_DATUM);
+@@ -792,7 +792,7 @@ void drawMetricRow(Canvas& gfx)
+     uint16_t infoColor = TFT_DARKGREY;
+     if (currentState == State::SpeakerTest) {
+         snprintf(infoBuf, sizeof(infoBuf), "%.0fHz", kToneFreqs[freqIndex]);
+-        infoColor = TFT_YELLOW;
++        infoColor = TFT_ORANGE;
+     } else if (currentState == State::DonePass) {
+         snprintf(infoBuf, sizeof(infoBuf), "OK");
+         infoColor = TFT_GREEN;
+@@ -806,8 +806,8 @@ void drawMetricRow(Canvas& gfx)
+         snprintf(infoBuf, sizeof(infoBuf), "WAIT");
+     }
+ 
+-    drawMetricCard(gfx, kUiMargin, "RMS", rmsBuf, TFT_WHITE, kColorPanelEdge);
+-    drawMetricCard(gfx, kUiMargin + kMetricW + kStageGap, "PEAK", peakBuf, TFT_WHITE, kColorPanelEdge);
++    drawMetricCard(gfx, kUiMargin, "RMS", rmsBuf, TFT_BLACK, kColorPanelEdge);
++    drawMetricCard(gfx, kUiMargin + kMetricW + kStageGap, "PEAK", peakBuf, TFT_BLACK, kColorPanelEdge);
+     drawMetricCard(gfx, kUiMargin + (kMetricW + kStageGap) * 2, "INFO", infoBuf, infoColor, stateAccent());
+ }
+ 
+diff --git a/examples/factory/page_nfc.h b/examples/factory/page_nfc.h
+index 06be042..5785ca2 100644
+--- a/examples/factory/page_nfc.h
++++ b/examples/factory/page_nfc.h
+@@ -52,13 +52,13 @@ constexpr int16_t kMetaLeftX = 8;
+ constexpr int16_t kMetaRightX = 164;
+ constexpr int16_t kSizeY = 134;
+ 
+-constexpr uint16_t kColorBg = 0x0841;
+-constexpr uint16_t kColorPanel = 0x1082;
+-constexpr uint16_t kColorPanelEdge = 0x31A6;
+-constexpr uint16_t kColorCard = 0x18C3;
+-constexpr uint16_t kColorPassBg = 0x0A41;
+-constexpr uint16_t kColorWarnBg = 0x5A00;
+-constexpr uint16_t kColorFailBg = 0x3006;
++constexpr uint16_t kColorBg = 0xFFFF;
++constexpr uint16_t kColorPanel = 0xF79E;
++constexpr uint16_t kColorPanelEdge = 0x0000;
++constexpr uint16_t kColorCard = 0xFFFF;
++constexpr uint16_t kColorPassBg = 0xE7DC;
++constexpr uint16_t kColorWarnBg = 0xFE55;
++constexpr uint16_t kColorFailBg = 0xFEBA;
+ 
+ Adafruit_PN532 nfc(BOARD_PN532_IRQ, BOARD_PN532_RF_REST);
+ UiState uiState = UiState::Init;
+@@ -103,8 +103,8 @@ String stateLabel()
+ uint16_t stateColor()
+ {
+     switch (uiState) {
+-        case UiState::Init:       return TFT_CYAN;
+-        case UiState::Scanning:   return TFT_YELLOW;
++        case UiState::Init:       return 0x0410;
++        case UiState::Scanning:   return TFT_ORANGE;
+         case UiState::CardFound:  return TFT_GREEN;
+         case UiState::ReadFail:   return TFT_ORANGE;
+         case UiState::NoCard:     return TFT_DARKGREY;
+@@ -522,12 +522,12 @@ String statusPillText()
+ 
+ void drawHeader()
+ {
+-    tft.fillRect(0, 0, tft.width(), kHeaderH, TFT_NAVY);
++    tft.fillRect(0, 0, tft.width(), kHeaderH, TFT_WHITE);
+     tft.setTextDatum(TL_DATUM);
+-    tft.setTextColor(TFT_WHITE, TFT_NAVY);
++    tft.setTextColor(TFT_BLACK, TFT_WHITE);
+     tft.drawString("PN532 NFC Test", kUiMargin, 5, 2);
+     tft.setTextDatum(TR_DATUM);
+-    tft.setTextColor(TFT_CYAN, TFT_NAVY);
++    tft.setTextColor(kUiAccent, TFT_WHITE);
+     tft.drawString("I2C / IRQ", tft.width() - kUiMargin, 7, 1);
+     tft.setTextDatum(TL_DATUM);
+ }
+@@ -535,9 +535,9 @@ void drawHeader()
+ void drawFooter()
+ {
+     const int16_t y = tft.height() - kFooterH;
+-    tft.fillRect(0, y, tft.width(), kFooterH, TFT_DARKGREY);
++    tft.fillRect(0, y, tft.width(), kFooterH, kUiPanel);
+     tft.setTextDatum(TL_DATUM);
+-    tft.setTextColor(TFT_WHITE, TFT_DARKGREY);
++    tft.setTextColor(TFT_BLACK, kUiPanel);
+     tft.drawString(backFocused ? "BOOT back" : "BOOT reinit", 6, y + 4, 1);
+     drawBackButton(backFocused);
+ }
+@@ -560,7 +560,7 @@ void drawStatusPanel()
+     tft.drawString(statusPillText(), kStatusX + kStatusW - 36, kStatusY + 15, 1);
+ 
+     tft.setTextDatum(TL_DATUM);
+-    tft.setTextColor(TFT_LIGHTGREY, fill);
++    tft.setTextColor(kUiMuted, fill);
+     tft.drawString(statusDetailText(), kStatusX + 10, kStatusY + 24, 1);
+ }
+ 
+@@ -570,9 +570,9 @@ void drawFieldCard(const int16_t x, const int16_t y, const int16_t w, const int1
+     tft.fillRoundRect(x, y, w, h, 6, kColorCard);
+     tft.drawRoundRect(x, y, w, h, 6, borderColor);
+     tft.setTextDatum(TL_DATUM);
+-    tft.setTextColor(TFT_CYAN, kColorCard);
++    tft.setTextColor(0x0410, kColorCard);
+     tft.drawString(label, x + 8, y + 5, 1);
+-    tft.setTextColor(TFT_WHITE, kColorCard);
++    tft.setTextColor(TFT_BLACK, kColorCard);
+     tft.drawString(value, x + 56, y + 5, 1);
+ }
+ 
+@@ -581,9 +581,9 @@ void drawCardDetails()
+     tft.fillRoundRect(kUidX, kUidY, kUidW, kUidH, 6, kColorCard);
+     tft.drawRoundRect(kUidX, kUidY, kUidW, kUidH, 6, stateColor());
+     tft.setTextDatum(TL_DATUM);
+-    tft.setTextColor(TFT_CYAN, kColorCard);
++    tft.setTextColor(0x0410, kColorCard);
+     tft.drawString("UID", kUidX + 8, kUidY + 6, 1);
+-    tft.setTextColor(TFT_WHITE, kColorCard);
++    tft.setTextColor(TFT_BLACK, kColorCard);
+     tft.drawString(uidText(), kUidX + 56, kUidY + 6, 1);
+ 
+     drawFieldCard(kMetaLeftX, kMetaY, kMetaW, kMetaH, "Type", typeText(), kColorPanelEdge);
+diff --git a/examples/factory/page_nrf24.h b/examples/factory/page_nrf24.h
+index 4638c59..5c38487 100644
+--- a/examples/factory/page_nrf24.h
++++ b/examples/factory/page_nrf24.h
+@@ -202,11 +202,11 @@ void checkLedTimeout()
+ 
+ void drawHeader()
+ {
+-    tft.fillRect(0, 0, tft.width(), kHeaderHeight, TFT_NAVY);
+-    tft.setTextColor(TFT_WHITE, TFT_NAVY);
++    tft.fillRect(0, 0, tft.width(), kHeaderHeight, TFT_WHITE);
++    tft.setTextColor(TFT_BLACK, TFT_WHITE);
+     tft.drawString("nRF24 Send / Recv", kMargin, 6, 2);
+     tft.setTextDatum(TR_DATUM);
+-    tft.setTextColor(TFT_CYAN, TFT_NAVY);
++    tft.setTextColor(kUiAccent, TFT_WHITE);
+     tft.drawString("Factory", tft.width() - kMargin, 7, 1);
+     tft.setTextDatum(TL_DATUM);
+ }
+@@ -214,8 +214,8 @@ void drawHeader()
+ void drawFooter()
+ {
+     const int16_t y = tft.height() - kFooterHeight;
+-    tft.fillRect(0, y, tft.width(), kFooterHeight, TFT_DARKGREY);
+-    tft.setTextColor(TFT_WHITE, TFT_DARKGREY);
++    tft.fillRect(0, y, tft.width(), kFooterHeight, kUiPanel);
++    tft.setTextColor(TFT_BLACK, kUiPanel);
+     if (!radioReady) {
+         tft.drawString("Radio init failed", kMarginLeft, y + 3, 1);
+     } else if (backFocused) {
+@@ -228,8 +228,8 @@ void drawFooter()
+ 
+ void drawChannelRow()
+ {
+-    tft.fillRect(0, kRowParam, tft.width(), 28, TFT_BLACK);
+-    tft.setTextColor(TFT_CYAN, TFT_BLACK);
++    tft.fillRect(0, kRowParam, tft.width(), 28, TFT_WHITE);
++    tft.setTextColor(kUiAccent, TFT_WHITE);
+     tft.drawString("CHAN:", kMarginLeft, kRowParam + 8, 1);
+ 
+     int8_t presetIndex = -1;
+@@ -244,25 +244,25 @@ void drawChannelRow()
+     if (presetIndex == 0) {
+         color = TFT_GREEN;
+     } else if (presetIndex == 1) {
+-        color = TFT_YELLOW;
++        color = TFT_ORANGE;
+     } else if (presetIndex == 2) {
+-        color = TFT_CYAN;
++        color = 0x0410;
+     } else if (presetIndex == 3) {
+         color = TFT_ORANGE;
+     }
+ 
+-    tft.setTextColor(color, TFT_BLACK);
++    tft.setTextColor(color, TFT_WHITE);
+     tft.drawString(currentChannelLabel(), kMarginLeft + 50, kRowParam, 4);
+ }
+ 
+ void drawModeRow()
+ {
+-    tft.fillRect(0, kRowMode, tft.width(), 18, TFT_BLACK);
+-    tft.setTextColor(TFT_CYAN, TFT_BLACK);
++    tft.fillRect(0, kRowMode, tft.width(), 18, TFT_WHITE);
++    tft.setTextColor(kUiAccent, TFT_WHITE);
+     tft.drawString("MODE:", kMarginLeft, kRowMode + 2, 1);
+ 
+     const uint16_t color = currentMode == RadioMode::Receive ? TFT_GREEN : TFT_ORANGE;
+-    tft.setTextColor(color, TFT_BLACK);
++    tft.setTextColor(color, TFT_WHITE);
+     tft.drawString(currentMode == RadioMode::Receive ? "RX" : "TX BURST", kMarginLeft + 50, kRowMode, 2);
+ }
+ 
+@@ -280,24 +280,24 @@ void drawConfigSummaryLine(const int16_t y)
+              currentDataRateLabel(),
+              currentOutputPowerLabel(),
+              autoAckEnabled ? "ACK" : "NOACK");
+-    tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
++    tft.setTextColor(TFT_BLACK, TFT_WHITE);
+     tft.drawString(line, kMarginLeft, y, 1);
+ }
+ 
+ void drawReceiveRows()
+ {
+-    tft.fillRect(0, kRowInfo1, tft.width(), tft.height() - kFooterHeight - kRowInfo1, TFT_BLACK);
+-    tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
++    tft.fillRect(0, kRowInfo1, tft.width(), tft.height() - kFooterHeight - kRowInfo1, TFT_WHITE);
++    tft.setTextColor(TFT_BLACK, TFT_WHITE);
+     tft.drawString("Last RX:", kMarginLeft, kRowInfo1, 1);
+ 
+     if (!hasLastRx) {
+-        tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
++        tft.setTextColor(kUiMuted, TFT_WHITE);
+         tft.drawString("(none)", kMarginLeft + 56, kRowInfo1, 1);
+         tft.drawString("Waiting for packets...", kMarginLeft, kRowInfo2, 1);
+ 
+         char idleMeta[32];
+         snprintf(idleMeta, sizeof(idleMeta), "RX count: %lu", static_cast<unsigned long>(rxCounter));
+-        tft.setTextColor(TFT_CYAN, TFT_BLACK);
++        tft.setTextColor(kUiAccent, TFT_WHITE);
+         tft.drawString(idleMeta, kMarginLeft, kRowInfo3, 1);
+         drawConfigSummaryLine(kRowInfo4);
+         return;
+@@ -307,36 +307,36 @@ void drawReceiveRows()
+     if (payload.length() > 38) {
+         payload = payload.substring(0, 35) + "...";
+     }
+-    tft.setTextColor(TFT_WHITE, TFT_BLACK);
++    tft.setTextColor(TFT_BLACK, TFT_WHITE);
+     tft.drawString(payload, kMarginLeft, kRowInfo2, 1);
+ 
+     char meta[40];
+     snprintf(meta, sizeof(meta), "LEN:%u  RX#%lu",
+              static_cast<unsigned>(lastRxLength),
+              static_cast<unsigned long>(rxCounter));
+-    tft.setTextColor(TFT_CYAN, TFT_BLACK);
++    tft.setTextColor(kUiAccent, TFT_WHITE);
+     tft.drawString(meta, kMarginLeft, kRowInfo3, 1);
+     drawConfigSummaryLine(kRowInfo4);
+ }
+ 
+ void drawTransmitRows()
+ {
+-    tft.fillRect(0, kRowInfo1, tft.width(), tft.height() - kFooterHeight - kRowInfo1, TFT_BLACK);
++    tft.fillRect(0, kRowInfo1, tft.width(), tft.height() - kFooterHeight - kRowInfo1, TFT_WHITE);
+ 
+     char line[48];
+-    tft.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
++    tft.setTextColor(TFT_BLACK, TFT_WHITE);
+     snprintf(line, sizeof(line), "Burst TX every %lu ms", static_cast<unsigned long>(kBurstIntervalMs));
+     tft.drawString(line, kMarginLeft, kRowInfo1, 1);
+ 
+     snprintf(line, sizeof(line), "TX count: %lu", static_cast<unsigned long>(burstCounter));
+-    tft.setTextColor(TFT_CYAN, TFT_BLACK);
++    tft.setTextColor(kUiAccent, TFT_WHITE);
+     tft.drawString(line, kMarginLeft, kRowInfo2, 1);
+ 
+     String prefix = burstPrefix;
+     if (prefix.length() > 28) {
+         prefix = prefix.substring(0, 25) + "...";
+     }
+-    tft.setTextColor(TFT_WHITE, TFT_BLACK);
++    tft.setTextColor(TFT_BLACK, TFT_WHITE);
+     tft.drawString("Prefix: " + prefix, kMarginLeft, kRowInfo3, 1);
+     drawConfigSummaryLine(kRowInfo4);
+ }
+@@ -344,7 +344,7 @@ void drawTransmitRows()
+ void redrawAll()
+ {
+     board_prepare_display();
+-    tft.fillRect(0, 0, tft.width(), tft.height(), TFT_BLACK);
++    tft.fillRect(0, 0, tft.width(), tft.height(), TFT_WHITE);
+     drawHeader();
+     drawChannelRow();
+     drawModeRow();
+diff --git a/examples/factory/page_sd.h b/examples/factory/page_sd.h
+index effb8cf..c391fcc 100644
+--- a/examples/factory/page_sd.h
++++ b/examples/factory/page_sd.h
+@@ -47,12 +47,12 @@ constexpr int16_t kMetricRightX = 164;
+ constexpr int16_t kMetricW = 148;
+ constexpr int16_t kMetricH = 18;
+ 
+-constexpr uint16_t kColorBg = 0x0841;
+-constexpr uint16_t kColorPanel = 0x1082;
+-constexpr uint16_t kColorPanelEdge = 0x31A6;
+-constexpr uint16_t kColorCard = 0x18C3;
+-constexpr uint16_t kColorPassBg = 0x0A41;
+-constexpr uint16_t kColorFailBg = 0x3006;
++constexpr uint16_t kColorBg = 0xFFFF;
++constexpr uint16_t kColorPanel = 0xF79E;
++constexpr uint16_t kColorPanelEdge = 0x0000;
++constexpr uint16_t kColorCard = 0xFFFF;
++constexpr uint16_t kColorPassBg = 0xE7DC;
++constexpr uint16_t kColorFailBg = 0xFEBA;
+ 
+ SdTestSummary summary;
+ bool screenDirty = true;
+@@ -107,7 +107,7 @@ uint16_t statusAccentColor()
+         case StepState::Pass: return TFT_GREEN;
+         case StepState::Fail: return TFT_RED;
+         case StepState::Pending:
+-        default:              return TFT_YELLOW;
++        default:              return TFT_ORANGE;
+     }
+ }
+ 
+@@ -285,12 +285,12 @@ void runSdTest()
+ 
+ void drawHeader()
+ {
+-    tft.fillRect(0, 0, tft.width(), kHeaderH, TFT_NAVY);
++    tft.fillRect(0, 0, tft.width(), kHeaderH, TFT_WHITE);
+     tft.setTextDatum(TL_DATUM);
+-    tft.setTextColor(TFT_WHITE, TFT_NAVY);
++    tft.setTextColor(TFT_BLACK, TFT_WHITE);
+     tft.drawString("SD Card Test", kUiMargin, 5, 2);
+     tft.setTextDatum(TR_DATUM);
+-    tft.setTextColor(TFT_CYAN, TFT_NAVY);
++    tft.setTextColor(kUiAccent, TFT_WHITE);
+     tft.drawString("Shared SPI", tft.width() - kUiMargin, 7, 1);
+     tft.setTextDatum(TL_DATUM);
+ }
+@@ -298,9 +298,9 @@ void drawHeader()
+ void drawFooter()
+ {
+     const int16_t y = tft.height() - kFooterH;
+-    tft.fillRect(0, y, tft.width(), kFooterH, TFT_DARKGREY);
++    tft.fillRect(0, y, tft.width(), kFooterH, kUiPanel);
+     tft.setTextDatum(TL_DATUM);
+-    tft.setTextColor(TFT_WHITE, TFT_DARKGREY);
++    tft.setTextColor(TFT_BLACK, kUiPanel);
+     tft.drawString(backFocused ? "BOOT back" : "USER/BOOT retest", kUiMargin, y + 4, 1);
+     drawBackButton(backFocused);
+ }
+@@ -322,7 +322,7 @@ void drawStatusPanel()
+     tft.drawString(stepStateText(summary.result), kStatusX + kStatusW - 35, kStatusY + 15, 1);
+ 
+     tft.setTextDatum(TL_DATUM);
+-    tft.setTextColor(TFT_LIGHTGREY, fill);
++    tft.setTextColor(kUiMuted, fill);
+     tft.drawString(summary.detail, kStatusX + 10, kStatusY + 24, 1);
+ }
+ 
+@@ -333,7 +333,7 @@ void drawStepCard(const int16_t x, const char* label, const StepState state)
+     tft.drawRoundRect(x, kStepY, kStepW, kStepH, 6, accent);
+ 
+     tft.setTextDatum(TL_DATUM);
+-    tft.setTextColor(TFT_LIGHTGREY, kColorCard);
++    tft.setTextColor(kUiMuted, kColorCard);
+     tft.drawString(label, x + 6, kStepY + 5, 1);
+ 
+     tft.setTextDatum(TR_DATUM);
+@@ -349,10 +349,10 @@ void drawMetricCard(const int16_t x, const int16_t y,
+     tft.drawRoundRect(x, y, kMetricW, kMetricH, 6, borderColor);
+ 
+     tft.setTextDatum(TL_DATUM);
+-    tft.setTextColor(TFT_CYAN, kColorCard);
++    tft.setTextColor(0x0410, kColorCard);
+     tft.drawString(label, x + 8, y + 5, 1);
+ 
+-    tft.setTextColor(TFT_WHITE, kColorCard);
++    tft.setTextColor(TFT_BLACK, kColorCard);
+     tft.drawString(value, x + 52, y + 5, 1);
+ }
+ 
+diff --git a/examples/factory/page_setting.h b/examples/factory/page_setting.h
+index e8f2634..a84ef2a 100644
+--- a/examples/factory/page_setting.h
++++ b/examples/factory/page_setting.h
+@@ -35,22 +35,18 @@ const char* focusLabel(const Focus f)
+ uint16_t focusColor(const Focus f)
+ {
+     switch (f) {
+-        case Focus::Info:      return TFT_CYAN;
+-        case Focus::Rotation:  return TFT_YELLOW;
+-        case Focus::SleepNow:  return TFT_ORANGE;
+-        case Focus::AutoOff:   return TFT_GREEN;
+-        case Focus::Back:      return TFT_WHITE;
+-        default:               return TFT_LIGHTGREY;
++        case Focus::Back:      return TFT_BLACK;
++        default:               return kUiAccent;
+     }
+ }
+ 
+ void drawMenuItem(const Focus item, const int16_t y)
+ {
+     const bool selected = focus == item;
+-    const uint16_t bg = selected ? focusColor(item) : kUiCard;
+-    const uint16_t fg = selected ? TFT_BLACK : TFT_WHITE;
++    const uint16_t bg = selected ? TFT_BLACK : kUiCard;
++    const uint16_t fg = selected ? TFT_WHITE : TFT_BLACK;
+     tft.fillRoundRect(8, y, 104, 20, 6, bg);
+-    tft.drawRoundRect(8, y, 104, 20, 6, selected ? focusColor(item) : kUiEdge);
++    tft.drawRoundRect(8, y, 104, 20, 6, selected ? kUiAccent : kUiEdge);
+     tft.setTextColor(fg, bg);
+     tft.drawString(focusLabel(item), 16, y + 6, 1);
+ }
+@@ -61,7 +57,7 @@ void drawDetail()
+     tft.drawRoundRect(120, 34, 192, 114, 8, focusColor(focus));
+     tft.setTextColor(focusColor(focus), kUiPanel);
+     tft.drawString(focusLabel(focus), 130, 44, 2);
+-    tft.setTextColor(TFT_WHITE, kUiPanel);
++    tft.setTextColor(TFT_BLACK, kUiPanel);
+ 
+     switch (focus) {
+         case Focus::Info:
+@@ -83,7 +79,7 @@ void drawDetail()
+             break;
+         case Focus::AutoOff:
+             tft.drawString(autoSleepPresetLabel(), 130, 70, 4);
+-            tft.setTextColor(TFT_YELLOW, kUiPanel);
++            tft.setTextColor(TFT_ORANGE, kUiPanel);
+             tft.drawString(String("Dim: ") + autoDimTimeoutLabel(), 130, 112, 1);
+             break;
+         case Focus::Back:
+@@ -156,7 +152,7 @@ void render()
+     board_prepare_display();
+     gSubPageGfx.beginFrame();
+     tft.fillScreen(kUiBg);
+-    drawPageHeader("Settings", TFT_CYAN);
++    drawPageHeader("Settings", 0x0410);
+     drawPageFooter("ENC=select  BOOT=action", focus == Focus::Back);
+     drawMenuItem(Focus::Info, 34);
+     drawMenuItem(Focus::Rotation, 58);
+diff --git a/examples/factory/page_startup.h b/examples/factory/page_startup.h
+index bbadec4..593ea7e 100644
+--- a/examples/factory/page_startup.h
++++ b/examples/factory/page_startup.h
+@@ -15,6 +15,7 @@ enum class HardwareProfile : uint8_t {
+ constexpr uint32_t kFrameMs = 80;
+ constexpr uint32_t kPn532WakeDelayMs = 12;
+ constexpr uint32_t kPn532ResetPulseMs = 2;
++constexpr int16_t kFlipHeaderH = 17;
+ 
+ TFT_eSprite canvas(&tft);
+ bool canvasReady = false;
+@@ -103,14 +104,14 @@ String supportText()
+ {
+     switch (detectedProfile) {
+         case HardwareProfile::V10:
+-            return "This firmware matches V1.0 hardware.";
++            return "Matches V1.0 hardware.";
+         case HardwareProfile::V11:
+-            return "V1.1 detected. Main menu is blocked.";
++            return "V1.1: menu blocked.";
+         case HardwareProfile::Mixed:
+-            return "Probe is mixed. Continue with caution.";
++            return "Mixed probe. Careful.";
+         case HardwareProfile::Unknown:
+         default:
+-            return "No I2C devices found. Main menu is blocked.";
++            return "No I2C: menu blocked.";
+     }
+ }
+ 
+@@ -188,73 +189,82 @@ void detectHardwareProfile()
+                   allowMenuEntry ? 1 : 0);
+ }
+ 
++// Flipper desktop style startup: white canvas, top status bar, big dolphin,
++// wordmark + device info on the right, hint bar at the bottom.
++
+ template <typename Canvas>
+ void drawHeader(Canvas& gfx)
+ {
+-    gfx.fillRect(0, 0, gfx.width(), kHeaderH, TFT_NAVY);
+-    gfx.setTextDatum(TL_DATUM);
+-    gfx.setTextColor(TFT_WHITE, TFT_NAVY);
+-    gfx.drawString("Factory Startup", kMargin, 5, 2);
+-    gfx.setTextDatum(TR_DATUM);
+-    gfx.setTextColor(TFT_CYAN, TFT_NAVY);
+-    gfx.drawString("T-Embed CC1101", gfx.width() - kMargin, 7, 1);
++    gfx.fillRect(0, 0, gfx.width(), kHeaderH, kFlipperWhite);
++
++    gfx.fillRoundRect(4, 4, 9, 9, 2, kFlipperBlack);
++    gfx.setTextDatum(MC_DATUM);
++    gfx.setTextColor(kFlipperWhite, kFlipperBlack);
++    gfx.drawString("T", 8, 8, 1);
++
+     gfx.setTextDatum(TL_DATUM);
++    gfx.setTextColor(kFlipperBlack, kFlipperWhite);
++    gfx.drawString("T-Embed CC1101", 17, 5, 1);
++
++    gfx.setTextColor(kFlipperGray, kFlipperWhite);
++    gfx.drawRightString(kFactorySoftwareVersion, gfx.width() - 6, 5, 1);
++
++    gfx.drawFastHLine(0, kFlipHeaderH, gfx.width(), kFlipperBlack);
+ }
+ 
+ template <typename Canvas>
+ void drawFooter(Canvas& gfx)
+ {
+     const int16_t y = gfx.height() - kFooterH;
+-    gfx.fillRect(0, y, gfx.width(), kFooterH, TFT_DARKGREY);
+-    gfx.setTextColor(TFT_WHITE, TFT_DARKGREY);
+-    gfx.drawString(clipText(footerText(), 38), kMargin, y + 4, 1);
++    gfx.fillRect(0, y, gfx.width(), kFooterH, kFlipperWhite);
++    gfx.drawFastHLine(0, y, gfx.width(), kFlipperBlack);
++    gfx.setTextColor(kFlipperBlack, kFlipperWhite);
++    gfx.drawCentreString(clipText(footerText(), 44), gfx.width() / 2, y + 5, 1);
++}
++
++template <typename Canvas>
++void drawWordmark(Canvas& gfx)
++{
++    gfx.setTextColor(kFlipperBlack, kFlipperWhite);
++    gfx.drawString("T-Embed", 150, 24, 4);
++    gfx.setTextColor(kFlipperGray, kFlipperWhite);
++    gfx.drawString("CC1101 Edition", 152, 56, 1);
+ }
+ 
+ template <typename Canvas>
+ void drawStatusBadge(Canvas& gfx)
+ {
+-    const int16_t x = 8;
+-    const int16_t y = 34;
+-    const int16_t w = 92;
+-    const int16_t h = 20;
+-    const uint16_t bg = supportBadgeBg();
+-    const uint16_t fg = supportBadgeColor();
+-
+-    gfx.fillRoundRect(x, y, w, h, 6, bg);
+-    gfx.drawRoundRect(x, y, w, h, 6, fg);
+-    gfx.setTextColor(fg, bg);
+-    gfx.drawCentreString(supportBadgeText(), x + w / 2, y + 5, 1);
++    const bool ok = allowMenuEntry;
++    const uint16_t fg = ok ? kFlipperBlack : kFlipperOrange;
++    const char* text = supportBadgeText();
++    const int16_t w = static_cast<int16_t>(strlen(text)) * 6 + 12;
++    const int16_t x = 150;
++    const int16_t y = 70;
++    const int16_t h = 15;
++
++    gfx.fillRoundRect(x, y, w, h, 4, kFlipperWhite);
++    gfx.drawRoundRect(x, y, w, h, 4, fg);
++    gfx.setTextColor(fg, kFlipperWhite);
++    gfx.drawCentreString(text, x + w / 2, y + 4, 1);
+ }
+ 
+ template <typename Canvas>
+-void drawInfoCard(Canvas& gfx)
++void drawInfoLines(Canvas& gfx)
+ {
+-    const int16_t x = 8;
+-    const int16_t y = 58;
+-    const int16_t w = gfx.width() - 16;
+-    const int16_t h = 80;
+-    const int16_t labelX = x + 10;
+-    const int16_t valueX = x + 50;
+-    const int16_t row1Y = y + 34;
+-    const int16_t row2Y = y + 48;
+-    const int16_t row3Y = y + 62;
+-
+-    gfx.fillRoundRect(x, y, w, h, 6, kUiCard);
+-    gfx.drawRoundRect(x, y, w, h, 6, kUiEdge);
+-
+-    gfx.setTextColor(TFT_WHITE, kUiCard);
+-    gfx.drawString("HW: " + hardwareVersionText(), x + 10, y + 8, 2);
+-    gfx.drawFastHLine(x + 10, y + 24, w - 20, kUiEdge);
+-
+-    gfx.setTextColor(kUiMuted, kUiCard);
+-    gfx.drawString("SW:", labelX, row1Y, 1);
+-    gfx.drawString("Build:", labelX, row2Y, 1);
+-    gfx.drawString("Git:", labelX, row3Y, 1);
+-
+-    gfx.setTextColor(TFT_WHITE, kUiCard);
+-    gfx.drawString(kFactorySoftwareVersion, valueX, row1Y, 1);
+-    gfx.drawString(kFactoryBuildStamp, valueX, row2Y, 1);
+-    gfx.drawString(kFactoryGitHash, valueX, row3Y, 1);
++    gfx.setTextColor(kFlipperGray, kFlipperWhite);
++    gfx.drawString(clipText(supportText(), 26), 150, 92, 1);
++
++    gfx.setTextColor(kFlipperGray, kFlipperWhite);
++    gfx.drawString("HW:", 150, 108, 1);
++    gfx.drawString("SW:", 150, 118, 1);
++    gfx.drawString("Git:", 150, 128, 1);
++    gfx.drawString("Build:", 150, 138, 1);
++
++    gfx.setTextColor(kFlipperBlack, kFlipperWhite);
++    gfx.drawString(clipText(String(hardwareVersionText().substring(8)), 21), 186, 108, 1);
++    gfx.drawString(kFactorySoftwareVersion, 186, 118, 1);
++    gfx.drawString(kFactoryGitHash, 186, 128, 1);
++    gfx.drawString(clipText(String(kFactoryBuildStamp), 21), 186, 138, 1);
+ }
+ 
+ template <typename Canvas>
+@@ -268,20 +278,20 @@ void drawProbeLines(Canvas& gfx)
+              hasAddr6A ? 'Y' : '-',
+              hasAddr6B ? 'Y' : '-');
+ 
+-    gfx.setTextColor(kUiMuted, kUiBg);
+-    gfx.drawString(probeLine, 8, 142, 1);
+-
+-    gfx.setTextColor(allowMenuEntry ? TFT_GREEN : TFT_RED, kUiBg);
+-    gfx.drawString(clipText(supportText(), 31), 106, 38, 1);
++    gfx.setTextColor(kFlipperGrayLt, kFlipperWhite);
++    gfx.drawString(probeLine, 6, 142, 1);
+ }
+ 
+ template <typename Canvas>
+ void drawUi(Canvas& gfx)
+ {
+-    gfx.fillScreen(kUiBg);
++    gfx.setTextDatum(TL_DATUM);
++    gfx.fillScreen(kFlipperWhite);
+     drawHeader(gfx);
++    drawFlipperDolphin(gfx, 78, 88, 3, kFlipperBlack, kFlipperWhite);
++    drawWordmark(gfx);
+     drawStatusBadge(gfx);
+-    drawInfoCard(gfx);
++    drawInfoLines(gfx);
+     drawProbeLines(gfx);
+     drawFooter(gfx);
+ }
+diff --git a/examples/factory/page_tft.h b/examples/factory/page_tft.h
+index 0712b09..3836b68 100644
+--- a/examples/factory/page_tft.h
++++ b/examples/factory/page_tft.h
+@@ -36,11 +36,11 @@ void drawBackButton(Canvas& gfx, const bool selected)
+     const int16_t h = 14;
+     const int16_t x = gfx.width() - w - 6;
+     const int16_t y = gfx.height() - kFooterH + 2;
+-    const uint16_t bg = selected ? TFT_WHITE : TFT_DARKGREY;
+-    const uint16_t fg = selected ? TFT_BLACK : TFT_LIGHTGREY;
++    const uint16_t bg = selected ? TFT_BLACK : kUiPanel;
++    const uint16_t fg = selected ? TFT_WHITE : TFT_BLACK;
+ 
+     gfx.fillRoundRect(x, y, w, h, 5, bg);
+-    gfx.drawRoundRect(x, y, w, h, 5, selected ? TFT_YELLOW : 0x52AA);
++    gfx.drawRoundRect(x, y, w, h, 5, selected ? kUiAccent : TFT_BLACK);
+     gfx.setTextColor(fg, bg);
+     gfx.drawCentreString("BACK", x + w / 2, y + 3, 1);
+ }
+@@ -48,12 +48,12 @@ void drawBackButton(Canvas& gfx, const bool selected)
+ template <typename Canvas>
+ void drawHeader(Canvas& gfx)
+ {
+-    gfx.fillRect(0, 0, gfx.width(), kHeaderH, TFT_NAVY);
++    gfx.fillRect(0, 0, gfx.width(), kHeaderH, TFT_WHITE);
+     gfx.setTextDatum(TL_DATUM);
+-    gfx.setTextColor(TFT_WHITE, TFT_NAVY);
++    gfx.setTextColor(TFT_BLACK, TFT_WHITE);
+     gfx.drawString("TFT Display", kMargin, 5, 2);
+     gfx.setTextDatum(TR_DATUM);
+-    gfx.setTextColor(TFT_YELLOW, TFT_NAVY);
++    gfx.setTextColor(kUiAccent, TFT_WHITE);
+     gfx.drawString("Factory", gfx.width() - kMargin, 7, 1);
+     gfx.setTextDatum(TL_DATUM);
+ }
+@@ -62,9 +62,9 @@ template <typename Canvas>
+ void drawFooter(Canvas& gfx)
+ {
+     const int16_t y = gfx.height() - kFooterH;
+-    gfx.fillRect(0, y, gfx.width(), kFooterH, TFT_DARKGREY);
++    gfx.fillRect(0, y, gfx.width(), kFooterH, kUiPanel);
+     gfx.setTextDatum(TL_DATUM);
+-    gfx.setTextColor(TFT_WHITE, TFT_DARKGREY);
++    gfx.setTextColor(TFT_BLACK, kUiPanel);
+     gfx.drawString(backFocused ? "BOOT=back" : "BOOT=next demo", kMargin, y + 4, 1);
+     drawBackButton(gfx, backFocused);
+ }
+@@ -88,7 +88,7 @@ void drawSummary(Canvas& gfx)
+     drawCard(gfx, 8, 36, 96, 42, "Width", String(gfx.width()), TFT_CYAN);
+     drawCard(gfx, 112, 36, 96, 42, "Height", String(gfx.height()), TFT_CYAN);
+     drawCard(gfx, 216, 36, 96, 42, "Rotation", currentRotationLabel(), TFT_YELLOW);
+-    gfx.setTextColor(TFT_WHITE, kUiBg);
++    gfx.setTextColor(TFT_BLACK, kUiBg);
+     gfx.drawString("Display online. Patterns auto-cycle.", 8, 104, 2);
+ }
+ 
+@@ -97,7 +97,7 @@ void drawColorBars(Canvas& gfx)
+ {
+     const uint16_t colors[] = {
+         TFT_RED, TFT_GREEN, TFT_BLUE, TFT_CYAN,
+-        TFT_MAGENTA, TFT_YELLOW, TFT_WHITE, TFT_BLACK
++        TFT_MAGENTA, TFT_YELLOW, TFT_BLACK, TFT_WHITE
+     };
+     const int16_t top = 30;
+     const int16_t bottom = gfx.height() - kFooterH - 2;
+@@ -129,7 +129,7 @@ void drawTextDemo(Canvas& gfx)
+     gfx.drawString("Font 2 factory text", 12, 62, 2);
+     gfx.setTextColor(TFT_GREEN, kUiBg);
+     gfx.drawString("1234567890", 12, 92, 4);
+-    gfx.setTextColor(TFT_WHITE, kUiBg);
++    gfx.setTextColor(TFT_BLACK, kUiBg);
+     gfx.drawCentreString("CENTER", gfx.width() / 2, 138, 2);
+ }
+ 
+diff --git a/examples/factory/page_wifi.h b/examples/factory/page_wifi.h
+index 0daf90b..5b0946d 100644
+--- a/examples/factory/page_wifi.h
++++ b/examples/factory/page_wifi.h
+@@ -205,11 +205,11 @@ void drawBackButton(Canvas& gfx, const bool selected)
+     const int16_t h = 14;
+     const int16_t x = gfx.width() - w - 6;
+     const int16_t y = gfx.height() - kFooterH + 2;
+-    const uint16_t bg = selected ? TFT_WHITE : TFT_DARKGREY;
+-    const uint16_t fg = selected ? TFT_BLACK : TFT_LIGHTGREY;
++    const uint16_t bg = selected ? TFT_BLACK : kUiPanel;
++    const uint16_t fg = selected ? TFT_WHITE : TFT_BLACK;
+ 
+     gfx.fillRoundRect(x, y, w, h, 5, bg);
+-    gfx.drawRoundRect(x, y, w, h, 5, selected ? TFT_YELLOW : 0x52AA);
++    gfx.drawRoundRect(x, y, w, h, 5, selected ? kUiAccent : TFT_BLACK);
+     gfx.setTextColor(fg, bg);
+     gfx.drawCentreString("BACK", x + w / 2, y + 3, 1);
+ }
+@@ -217,12 +217,12 @@ void drawBackButton(Canvas& gfx, const bool selected)
+ template <typename Canvas>
+ void drawHeader(Canvas& gfx)
+ {
+-    gfx.fillRect(0, 0, gfx.width(), kHeaderH, TFT_NAVY);
++    gfx.fillRect(0, 0, gfx.width(), kHeaderH, TFT_WHITE);
+     gfx.setTextDatum(TL_DATUM);
+-    gfx.setTextColor(TFT_WHITE, TFT_NAVY);
++    gfx.setTextColor(TFT_BLACK, TFT_WHITE);
+     gfx.drawString("WiFi", kMargin, 5, 2);
+     gfx.setTextDatum(TR_DATUM);
+-    gfx.setTextColor(TFT_CYAN, TFT_NAVY);
++    gfx.setTextColor(kUiAccent, TFT_WHITE);
+     gfx.drawString("Factory", gfx.width() - kMargin, 7, 1);
+     gfx.setTextDatum(TL_DATUM);
+ }
+@@ -231,9 +231,9 @@ template <typename Canvas>
+ void drawFooter(Canvas& gfx)
+ {
+     const int16_t y = gfx.height() - kFooterH;
+-    gfx.fillRect(0, y, gfx.width(), kFooterH, TFT_DARKGREY);
++    gfx.fillRect(0, y, gfx.width(), kFooterH, kUiPanel);
+     gfx.setTextDatum(TL_DATUM);
+-    gfx.setTextColor(TFT_WHITE, TFT_DARKGREY);
++    gfx.setTextColor(TFT_BLACK, kUiPanel);
+     gfx.drawString(backFocused ? "BOOT=back" : "BOOT=rescan", kMargin, y + 4, 1);
+     drawBackButton(gfx, backFocused);
+ }
+@@ -280,7 +280,7 @@ void drawUi(Canvas& gfx)
+     }
+     drawStatusPill(gfx, pillText, ok, 8, 34);
+ 
+-    gfx.setTextColor(TFT_WHITE, kUiBg);
++    gfx.setTextColor(TFT_BLACK, kUiBg);
+     if (state == WiFiState::Scanning) {
+         gfx.drawString(String("Scanning... ") + ((millis() - scanStartedMs) / 1000U) + "s", 88, 38, 2);
+     } else if (state == WiFiState::Connecting) {
+@@ -297,37 +297,37 @@ void drawUi(Canvas& gfx)
+ 
+     gfx.setTextColor(TFT_GREEN, kUiBg);
+     gfx.drawString("1 " + ap0, 8, 74, 1);
+-    gfx.setTextColor(TFT_CYAN, kUiBg);
++    gfx.setTextColor(0x0410, kUiBg);
+     gfx.drawString("2 " + ap1, 8, 96, 1);
+-    gfx.setTextColor(TFT_YELLOW, kUiBg);
++    gfx.setTextColor(TFT_ORANGE, kUiBg);
+     gfx.drawString("3 " + ap2, 8, 118, 1);
+ 
+     int32_t meterRssi = rssi0;
+     gfx.fillRect(0, 128, gfx.width(), 24, kUiBg);
+ 
+     if (state == WiFiState::Connecting && targetRssi > INT32_MIN) {
+-        gfx.setTextColor(TFT_WHITE, kUiBg);
++        gfx.setTextColor(TFT_BLACK, kUiBg);
+         gfx.drawString(String("Target: ") + clipLine(targetSsid, 16), 8, 132, 1);
+         meterRssi = targetRssi;
+     } else if (state == WiFiState::Connected && connectedRssi > INT32_MIN) {
+-        gfx.setTextColor(TFT_WHITE, kUiBg);
++        gfx.setTextColor(TFT_BLACK, kUiBg);
+         gfx.drawString(String("RSSI: ") + connectedRssi + " dBm", 8, 132, 1);
+         gfx.drawString("IP: " + clipLine(connectedIp, 23), 8, 142, 1);
+         meterRssi = connectedRssi;
+     } else if (state == WiFiState::NoTarget) {
+-        gfx.setTextColor(TFT_WHITE, kUiBg);
++        gfx.setTextColor(TFT_BLACK, kUiBg);
+         gfx.drawString("Only scan, no auto connect", 8, 136, 1);
+     } else if (state == WiFiState::Failed) {
+-        gfx.setTextColor(TFT_WHITE, kUiBg);
++        gfx.setTextColor(TFT_BLACK, kUiBg);
+         gfx.drawString("Retry with BOOT", 8, 136, 1);
+     } else if (rssi0 > INT32_MIN) {
+-        gfx.setTextColor(TFT_WHITE, kUiBg);
++        gfx.setTextColor(TFT_BLACK, kUiBg);
+         gfx.drawString(String("Top RSSI: ") + rssi0 + " dBm", 8, 136, 1);
+     }
+ 
+     if (meterRssi > INT32_MIN) {
+         drawMeter(gfx, 206, 138, 106, 10, static_cast<uint16_t>(max<int32_t>(0, meterRssi + 100)), 70,
+-                  state == WiFiState::Connected ? TFT_GREEN : TFT_CYAN);
++                  state == WiFiState::Connected ? TFT_GREEN : 0x0410);
+     }
+ }
+ }  // namespace
+diff --git a/examples/factory/page_ws2812.h b/examples/factory/page_ws2812.h
+index bccb3bf..6b85f0a 100644
+--- a/examples/factory/page_ws2812.h
++++ b/examples/factory/page_ws2812.h
+@@ -30,19 +30,19 @@ constexpr int16_t kBrightnessY = 128;
+ constexpr int16_t kBrightnessW = 304;
+ constexpr int16_t kBrightnessH = 20;
+ 
+-constexpr uint16_t kColorBg = 0x0841;
+-constexpr uint16_t kColorPanel = 0x1082;
+-constexpr uint16_t kColorPanelEdge = 0x31A6;
+-constexpr uint16_t kColorCard = 0x18C3;
+-constexpr uint16_t kColorBarBg = 0x2104;
++constexpr uint16_t kColorBg = 0xFFFF;
++constexpr uint16_t kColorPanel = 0xF79E;
++constexpr uint16_t kColorPanelEdge = 0x0000;
++constexpr uint16_t kColorCard = 0xFFFF;
++constexpr uint16_t kColorBarBg = 0xE71C;
+ 
+ constexpr PatternDef kPatterns[] = {
+     {"Solid Red",   "Checks the red channel on all 8 LEDs.", TFT_RED,   false},
+     {"Solid Green", "Checks the green channel on all 8 LEDs.", TFT_GREEN, false},
+     {"Solid Blue",  "Checks the blue channel on all 8 LEDs.", TFT_BLUE,  false},
+     {"White",       "Checks mixed RGB output on all LEDs.", TFT_WHITE, false},
+-    {"Rainbow",     "Animated hue sweep across the strip.", TFT_CYAN,  true},
+-    {"Chase Cyan",  "Moving pixels confirm animation timing.", TFT_YELLOW, true},
++    {"Rainbow",     "Animated hue sweep across the strip.", 0x0410,  true},
++    {"Chase Cyan",  "Moving pixels confirm animation timing.", TFT_ORANGE, true},
+ };
+ constexpr uint8_t kPatternCount = sizeof(kPatterns) / sizeof(kPatterns[0]);
+ 
+@@ -166,12 +166,12 @@ void handlePatternTimers()
+ 
+ void drawHeader()
+ {
+-    tft.fillRect(0, 0, tft.width(), kHeaderH, TFT_NAVY);
++    tft.fillRect(0, 0, tft.width(), kHeaderH, TFT_WHITE);
+     tft.setTextDatum(TL_DATUM);
+-    tft.setTextColor(TFT_WHITE, TFT_NAVY);
++    tft.setTextColor(TFT_BLACK, TFT_WHITE);
+     tft.drawString("WS2812 Test", kUiMargin, 5, 2);
+     tft.setTextDatum(TR_DATUM);
+-    tft.setTextColor(TFT_CYAN, TFT_NAVY);
++    tft.setTextColor(kUiAccent, TFT_WHITE);
+     tft.drawString("NeoPixel", tft.width() - kUiMargin, 7, 1);
+     tft.setTextDatum(TL_DATUM);
+ }
+@@ -193,7 +193,7 @@ void drawStatusPanel()
+     tft.drawString(stepLabel, kStatusX + kStatusW - 32, kStatusY + 15, 1);
+     tft.setTextDatum(TL_DATUM);
+ 
+-    tft.setTextColor(TFT_LIGHTGREY, kColorPanel);
++    tft.setTextColor(kUiMuted, kColorPanel);
+     tft.drawString(pattern.detail, kStatusX + 10, kStatusY + 24, 1);
+ }
+ 
+@@ -202,9 +202,9 @@ void drawPreviewPanel()
+     tft.fillRoundRect(kPreviewX, kPreviewY, kPreviewW, kPreviewH, 8, kColorCard);
+     tft.drawRoundRect(kPreviewX, kPreviewY, kPreviewW, kPreviewH, 8, kColorPanelEdge);
+ 
+-    tft.setTextColor(TFT_CYAN, kColorCard);
++    tft.setTextColor(0x0410, kColorCard);
+     tft.drawString("LED Preview", kPreviewX + 10, kPreviewY + 5, 1);
+-    tft.setTextColor(TFT_WHITE, kColorCard);
++    tft.setTextColor(TFT_BLACK, kColorCard);
+     tft.drawString("8 LEDs / GPIO14", kPreviewX + 90, kPreviewY + 5, 1);
+ 
+     constexpr int16_t kCircleRadius = 10;
+@@ -216,19 +216,19 @@ void drawPreviewPanel()
+         const uint16_t fill = pixelTo565(strip.getPixelColor(i));
+         const int16_t x = startX + static_cast<int16_t>(i) * gapX;
+         tft.fillCircle(x, ledRowY, kCircleRadius, fill);
+-        tft.drawCircle(x, ledRowY, kCircleRadius, TFT_LIGHTGREY);
++        tft.drawCircle(x, ledRowY, kCircleRadius, kUiMuted);
+     }
+ }
+ 
+ void drawBrightnessPanel()
+ {
+     tft.fillRoundRect(kBrightnessX, kBrightnessY, kBrightnessW, kBrightnessH, 8, kColorCard);
+-    tft.drawRoundRect(kBrightnessX, kBrightnessY, kBrightnessW, kBrightnessH, 8, TFT_YELLOW);
++    tft.drawRoundRect(kBrightnessX, kBrightnessY, kBrightnessW, kBrightnessH, 8, TFT_ORANGE);
+ 
+     char brightnessText[40];
+     snprintf(brightnessText, sizeof(brightnessText), "Brightness %u / 255  (%u%%)",
+              currentBrightness(), currentBrightnessPercent());
+-    tft.setTextColor(TFT_WHITE, kColorCard);
++    tft.setTextColor(TFT_BLACK, kColorCard);
+     tft.drawString(brightnessText, kBrightnessX + 8, kBrightnessY + 4, 1);
+ 
+     const int16_t barX = kBrightnessX + 170;
+@@ -239,17 +239,17 @@ void drawBrightnessPanel()
+ 
+     tft.fillRoundRect(barX, barY, barW, barH, 4, kColorBarBg);
+     if (fillW > 0) {
+-        tft.fillRoundRect(barX, barY, fillW, barH, 4, TFT_YELLOW);
++        tft.fillRoundRect(barX, barY, fillW, barH, 4, TFT_ORANGE);
+     }
+-    tft.drawRoundRect(barX, barY, barW, barH, 4, TFT_DARKGREY);
++    tft.drawRoundRect(barX, barY, barW, barH, 4, TFT_BLACK);
+ }
+ 
+ void drawFooter()
+ {
+     const int16_t y = tft.height() - kFooterH;
+-    tft.fillRect(0, y, tft.width(), kFooterH, TFT_DARKGREY);
++    tft.fillRect(0, y, tft.width(), kFooterH, kUiPanel);
+     tft.setTextDatum(TL_DATUM);
+-    tft.setTextColor(TFT_WHITE, TFT_DARKGREY);
++    tft.setTextColor(TFT_BLACK, kUiPanel);
+     tft.drawString(backFocused ? "BOOT back" : "USER bright  BOOT next", kUiMargin, y + 4, 1);
+     drawBackButton(backFocused);
+ }
