@@ -127,10 +127,10 @@ index 1570c19..418b429 100644
      pinMode(BOARD_PWR_EN, OUTPUT);
 diff --git a/examples/factory/flipper_style.h b/examples/factory/flipper_style.h
 new file mode 100644
-index 0000000..627f4da
+index 0000000..7c2fe49
 --- /dev/null
 +++ b/examples/factory/flipper_style.h
-@@ -0,0 +1,154 @@
+@@ -0,0 +1,166 @@
 +#pragma once
 +
 +// =============================================================================
@@ -205,6 +205,18 @@ index 0000000..627f4da
 +    plotArc(gfx, (float)(cx + 10 * s), (float)(cy + 1 * s), smileR, 35.0f, 145.0f, bg);
 +    if (s > 1) {
 +        plotArc(gfx, (float)(cx + 10 * s), (float)(cy + 1 * s), smileR - 1.0f, 40.0f, 140.0f, bg);
++    }
++}
++
++// Flipper style battery status glyph. soc: 0..100, or <=0 for unknown.
++template <typename Canvas>
++void drawBatteryIcon(Canvas& gfx, int16_t x, int16_t y, int8_t soc)
++{
++    gfx.drawRect(x, y, 11, 7, kFlipperBlack);
++    gfx.fillRect(x + 11, y + 2, 2, 3, kFlipperBlack);
++    if (soc > 0) {
++        const int16_t fillW = static_cast<int16_t>((9L * soc) / 100L);
++        gfx.fillRect(x + 1, y + 1, fillW, 5, soc <= 20 ? kFlipperOrange : kFlipperBlack);
 +    }
 +}
 +
@@ -286,15 +298,16 @@ index 0000000..627f4da
 +    }
 +}
 diff --git a/examples/factory/main_menu_ui.h b/examples/factory/main_menu_ui.h
-index 2822cf6..35846a6 100644
+index 2822cf6..ddc73d0 100644
 --- a/examples/factory/main_menu_ui.h
 +++ b/examples/factory/main_menu_ui.h
-@@ -1,33 +1,30 @@
+@@ -1,52 +1,21 @@
  #pragma once
  
 +// =============================================================================
-+// Main menu in Flipper Zero style: monochrome canvas, inverted selection bar,
-+// app icons, scrollbar, top status bar and bottom button hints.
++// Flipper Zero main menu: full-width scrolling rows with app icons on a
++// monochrome canvas, status bar on top, scrollbar on the right edge.
++// No side panels, no cards - just the Flipper list.
 +// =============================================================================
 +
  constexpr uint32_t kMenuFrameIntervalMs = 20;
@@ -325,34 +338,50 @@ index 2822cf6..35846a6 100644
 -constexpr int16_t kMenuDetailY   = 32;
 -constexpr int16_t kMenuDetailW   = 120;
 -constexpr int16_t kMenuDetailH   = 118;
+-
+-struct MainMenuInsight {
+-    const char* line1;
+-    const char* line2;
+-};
+-
+-static const MainMenuInsight kMainMenuInsights[kPageCount] = {
+-    {"Gauge and PMU",   "Charge and USB"},
+-    {"SPI and RF path", "Packet and RSSI"},
+-    {"IR TX and RX",    "Preset carrier"},
+-    {"Audio self-test", "MIC & speaker"},
+-    {"PN532 detect",    "UID and state"},
+-    {"2.4 GHz radio",   "Burst and RX"},
+-    {"Mount and files", "Read/write test"},
+-    {"Scan AP list",    "Signal detail"},
+-    {"Pixels and demo", "Colors and motion"},
+-    {"Color preview",   "Brightness step"},
+-    {"Rotation sleep",  "Info and timer"},
+-};
 +constexpr uint8_t kMenuPageSize = 9;
 +
 +constexpr int16_t kMenuHeaderH    = 17;
-+constexpr int16_t kMenuFooterY    = 153;
-+constexpr int16_t kMenuFooterH    = 17;
-+constexpr int16_t kMenuListX      = 4;
-+constexpr int16_t kMenuListY      = 20;
-+constexpr int16_t kMenuListW      = 181;
-+constexpr int16_t kMenuListH      = 129;
-+constexpr int16_t kMenuRowX       = 6;
-+constexpr int16_t kMenuRowStartY  = 22;
-+constexpr int16_t kMenuRowW       = 177;
-+constexpr int16_t kMenuRowH       = 12;
-+constexpr int16_t kMenuRowPitch   = 14;
-+constexpr int16_t kMenuScrollX    = 186;
-+constexpr int16_t kMenuDetailX    = 193;
-+constexpr int16_t kMenuDetailY    = 20;
-+constexpr int16_t kMenuDetailW    = 123;
-+constexpr int16_t kMenuDetailH    = 129;
++constexpr int16_t kMenuRowX       = 2;
++constexpr int16_t kMenuRowStartY  = 20;
++constexpr int16_t kMenuRowW       = 313;
++constexpr int16_t kMenuRowH       = 14;
++constexpr int16_t kMenuRowPitch   = 15;
++constexpr int16_t kMenuScrollX    = 318;
  
- struct MainMenuInsight {
-     const char* line1;
-@@ -92,37 +89,66 @@ uint8_t menuPageCount()
-     return static_cast<uint8_t>((kPageCount + kMenuPageSize - 1) / kMenuPageSize);
+ uint8_t selectedMenuIndex()
+ {
+@@ -82,47 +51,47 @@ uint8_t menuVisibleCount()
+     return min<uint8_t>(kMenuPageSize, kPageCount - start);
  }
  
+-uint8_t menuPageNumber()
+-{
+-    return static_cast<uint8_t>(menuPageStart() / kMenuPageSize + 1);
+-}
+-
+-uint8_t menuPageCount()
 +int8_t batterySocPercent()
-+{
+ {
+-    return static_cast<uint8_t>((kPageCount + kMenuPageSize - 1) / kMenuPageSize);
 +    // "SOC: 85%" / "SOC: --" -> 85 / -1
 +    const String soc = page_battery::menuPreviewLine1();
 +    if (!soc.startsWith("SOC: ")) {
@@ -365,8 +394,8 @@ index 2822cf6..35846a6 100644
 +        return -1;
 +    }
 +    return static_cast<int8_t>(constrain(value.toInt(), 0, 100));
-+}
-+
+ }
+ 
  template <typename Canvas>
  void drawMenuBackground(Canvas& gfx)
  {
@@ -374,6 +403,7 @@ index 2822cf6..35846a6 100644
 +    gfx.fillRect(0, 0, gfx.width(), gfx.height(), kFlipperWhite);
  }
  
++// Flipper status bar: wordmark left, battery right, black hairline below.
  template <typename Canvas>
  void drawMenuHeader(Canvas& gfx)
  {
@@ -383,12 +413,6 @@ index 2822cf6..35846a6 100644
 -    gfx.fillRect(0, 0, W, kMenuHeaderH, kMenuPanel);
 -    gfx.drawFastHLine(0, kMenuHeaderH - 1, W, kMenuPanelEdge);
 +    gfx.fillRect(0, 0, W, kMenuHeaderH, kFlipperWhite);
-+
-+    // "T" tile logo, like a Flipper app icon
-+    gfx.fillRoundRect(4, 4, 9, 9, 2, kFlipperBlack);
-+    gfx.setTextDatum(MC_DATUM);
-+    gfx.setTextColor(kFlipperWhite, kFlipperBlack);
-+    gfx.drawString("T", 8, 8, 1);
  
      gfx.setTextDatum(TL_DATUM);
 -    gfx.setTextColor(kMenuText, kMenuPanel);
@@ -396,29 +420,11 @@ index 2822cf6..35846a6 100644
 -    gfx.setTextColor(kMenuSubText, kMenuPanel);
 -    if (menuPageCount() > 1) {
 -        gfx.drawString(String("Page ") + menuPageNumber() + "/" + menuPageCount(), 108, 6, 1);
-+    gfx.setTextColor(kFlipperBlack, kFlipperWhite);
-+    gfx.drawString("T-Embed CC1101", 17, 5, 1);
-+
-+    gfx.setTextColor(kFlipperGray, kFlipperWhite);
-+    gfx.drawString(String(menuPageNumber()) + "/" + String(menuPageCount()), 107, 5, 1);
-+
-+    // Battery glyph + SOC, Flipper status bar style
-+    const int16_t batX = W - 17;
-+    const int8_t soc = batterySocPercent();
-+    if (soc >= 0) {
-+        gfx.setTextColor(soc <= 20 ? kFlipperOrange : kFlipperGray, kFlipperWhite);
-+        gfx.drawRightString(String(soc) + "%", batX - 3, 5, 1);
-     } else {
+-    } else {
 -        gfx.drawString("Select a module", 108, 6, 1);
-+        gfx.setTextColor(kFlipperGray, kFlipperWhite);
-+        gfx.drawRightString("--", batX - 3, 5, 1);
-+    }
-+    gfx.drawRect(batX, 5, 11, 7, kFlipperBlack);
-+    gfx.fillRect(batX + 11, 7, 2, 3, kFlipperBlack);
-+    if (soc > 0) {
-+        const int16_t fillW = static_cast<int16_t>((9L * soc) / 100L);
-+        gfx.fillRect(batX + 1, 6, fillW, 5, soc <= 20 ? kFlipperOrange : kFlipperBlack);
-     }
+-    }
++    gfx.setTextColor(kFlipperBlack, kFlipperWhite);
++    gfx.drawString("T-Embed CC1101", 4, 5, 1);
  
 -    char pageBuf[12];
 -    snprintf(pageBuf, sizeof(pageBuf), "%02u/%02u",
@@ -426,11 +432,17 @@ index 2822cf6..35846a6 100644
 -             static_cast<unsigned>(kPageCount));
 -    gfx.setTextColor(kMenuAccent, kMenuPanel);
 -    gfx.drawRightString(pageBuf, W - 8, 6, 1);
++    const int16_t batX = W - 16;
++    const int8_t soc = batterySocPercent();
++    gfx.setTextColor(soc <= 20 && soc > 0 ? kFlipperOrange : kFlipperGray, kFlipperWhite);
++    gfx.drawRightString(soc >= 0 ? String(soc) + "%" : String("--"), batX - 3, 5, 1);
++    drawBatteryIcon(gfx, batX, 5, soc);
++
 +    gfx.drawFastHLine(0, kMenuHeaderH, W, kFlipperBlack);
  }
  
  template <typename Canvas>
-@@ -132,28 +158,42 @@ void drawMenuList(Canvas& gfx)
+@@ -132,97 +101,45 @@ void drawMenuList(Canvas& gfx)
      const uint8_t start = menuPageStart();
      const uint8_t count = menuVisibleCount();
  
@@ -447,7 +459,7 @@ index 2822cf6..35846a6 100644
          if (isSelected) {
 -            gfx.fillRect(kMenuRowX + 1, y + 1, 3, kMenuRowH - 2, kMenuAccent);
 -            gfx.drawRoundRect(kMenuRowX, y, kMenuRowW, kMenuRowH, 4, kMenuAccent);
-+            gfx.fillRoundRect(kMenuRowX - 2, y, kMenuRowW, kMenuRowH, 4, kFlipperBlack);
++            gfx.fillRoundRect(kMenuRowX, y, kMenuRowW, kMenuRowH, 4, kFlipperBlack);
          }
  
 -        char num[4];
@@ -459,22 +471,75 @@ index 2822cf6..35846a6 100644
  
 -        gfx.setTextColor(kMenuText, rowBg);
 -        gfx.drawString(kPages[i].label, kMenuRowX + 28, y + 1, 1);
-+        drawFlipperIcon(gfx, i, kMenuRowX + 2, y + 2, fg);
-+
+-    }
+-}
++        drawFlipperIcon(gfx, i, kMenuRowX + 6, y + 3, fg);
+ 
+-template <typename Canvas>
+-void drawMenuDetail(Canvas& gfx)
+-{
+-    const uint8_t idx = selectedMenuIndex();
+-    const MainMenuInsight& info = kMainMenuInsights[idx];
+-    String line1 = info.line1;
+-    String line2 = info.line2;
+-    uint16_t line1Color = kMenuSubText;
+-    uint16_t line2Color = kMenuSubText;
+-    if (idx == 0) {
+-        line1 = page_battery::menuPreviewLine1();
+-        line2 = page_battery::menuPreviewLine2();
+-        line1Color = page_battery::menuPreviewLine1Color();
+-        line2Color = page_battery::menuPreviewLine2Color();
 +        gfx.setTextColor(fg, bg);
-+        gfx.drawString(kPages[i].label, kMenuRowX + 15, y + 2, 1);
-+
-+        if (isSelected) {
-+            gfx.setTextColor(kFlipperWhite, kFlipperBlack);
-+            gfx.drawRightString(">", kMenuRowX - 2 + kMenuRowW - 5, y + 2, 1);
-+        }
-+    }
-+
-+    // Flipper style scrollbar
++        gfx.drawString(kPages[i].label, kMenuRowX + 22, y + 3, 1);
+     }
+-    const int16_t x = kMenuDetailX;
+-    const int16_t y = kMenuDetailY;
+-    const int16_t w = kMenuDetailW;
+-
+-    gfx.fillRoundRect(x, y, kMenuDetailW, kMenuDetailH, 6, kMenuPanel);
+-    gfx.drawRoundRect(x, y, kMenuDetailW, kMenuDetailH, 6, kMenuPanelEdge);
+ 
+-    gfx.setTextColor(kMenuSubText, kMenuPanel);
+-    gfx.drawString("Current", x + 8, y + 6, 1);
+-
+-    gfx.setTextColor(kMenuText, kMenuPanel);
+-    gfx.drawString(clipMenuText(String(kPages[idx].label), 16).c_str(), x + 8, y + 20, 1);
+-
+-    gfx.setTextColor(line1Color, kMenuPanel);
+-    gfx.drawString(clipMenuText(line1, 16).c_str(), x + 8, y + 34, 1);
+-    gfx.setTextColor(line2Color, kMenuPanel);
+-    gfx.drawString(clipMenuText(line2, 16).c_str(), x + 8, y + 44, 1);
+-
+-    gfx.drawFastHLine(x + 8, y + 58, w - 16, kMenuPanelEdge);
+-
+-    gfx.setTextColor(kMenuAccent, kMenuPanel);
+-    gfx.drawString("Rotation", x + 8, y + 66, 1);
+-    gfx.drawString("Sleep", x + 8, y + 80, 1);
+-    gfx.drawString("Dim", x + 8, y + 94, 1);
+-
+-    gfx.setTextColor(kMenuText, kMenuPanel);
+-    gfx.drawRightString(clipMenuText(currentRotationLabel(), 10).c_str(), x + w - 8, y + 66, 1);
+-    gfx.drawRightString(clipMenuText(autoSleepPresetLabel(), 10).c_str(), x + w - 8, y + 80, 1);
+-    gfx.drawRightString(clipMenuText(autoDimTimeoutLabel(), 10).c_str(), x + w - 8, y + 94, 1);
+-}
+-
+-template <typename Canvas>
+-void drawMenuFooter(Canvas& gfx)
+-{
+-    const int16_t W = gfx.width();
+-
+-    gfx.fillRect(0, kMenuFooterY, W, kMenuFooterH, kMenuFooter);
+-    gfx.drawFastHLine(0, kMenuFooterY, W, kMenuPanelEdge);
+-
+-    gfx.setTextColor(kMenuSubText, kMenuFooter);
+-    gfx.drawString("ENC scroll", 8, kMenuFooterY + 5, 1);
+-    gfx.drawCentreString("BOOT open", W / 2, kMenuFooterY + 5, 1);
+-    gfx.drawRightString("USER next", W - 8, kMenuFooterY + 5, 1);
++    // Flipper style scrollbar on the right edge
 +    if (kPageCount > kMenuPageSize) {
-+        const int16_t trackY = kMenuListY + 2;
-+        const int16_t trackH = kMenuListH - 6;
-+        gfx.drawFastVLine(kMenuScrollX + 1, trackY, trackH, kFlipperGrayLt);
++        const int16_t trackY = kMenuRowStartY;
++        const int16_t trackH = kMenuPageSize * kMenuRowPitch - 8;
++        gfx.drawFastVLine(kMenuScrollX, trackY, trackH, kFlipperGrayLt);
 +
 +        const int16_t thumbH = static_cast<int16_t>(
 +            (static_cast<int32_t>(trackH) * count) / kPageCount);
@@ -482,98 +547,8 @@ index 2822cf6..35846a6 100644
 +        const int16_t off = (kPageCount - count) == 0
 +            ? 0
 +            : static_cast<int16_t>((static_cast<int32_t>(maxOff) * start) / (kPageCount - count));
-+        gfx.fillRect(kMenuScrollX, trackY + off, 3, thumbH, kFlipperBlack);
-     }
- }
- 
-@@ -164,43 +204,50 @@ void drawMenuDetail(Canvas& gfx)
-     const MainMenuInsight& info = kMainMenuInsights[idx];
-     String line1 = info.line1;
-     String line2 = info.line2;
--    uint16_t line1Color = kMenuSubText;
--    uint16_t line2Color = kMenuSubText;
-+    uint16_t line1Color = kFlipperGray;
-+    uint16_t line2Color = kFlipperGray;
-     if (idx == 0) {
-         line1 = page_battery::menuPreviewLine1();
-         line2 = page_battery::menuPreviewLine2();
-         line1Color = page_battery::menuPreviewLine1Color();
-         line2Color = page_battery::menuPreviewLine2Color();
-+        if (line1Color == TFT_LIGHTGREY) line1Color = kFlipperGray;
-+        if (line2Color == TFT_LIGHTGREY) line2Color = kFlipperGray;
-     }
-     const int16_t x = kMenuDetailX;
-     const int16_t y = kMenuDetailY;
-     const int16_t w = kMenuDetailW;
- 
--    gfx.fillRoundRect(x, y, kMenuDetailW, kMenuDetailH, 6, kMenuPanel);
--    gfx.drawRoundRect(x, y, kMenuDetailW, kMenuDetailH, 6, kMenuPanelEdge);
-+    gfx.fillRoundRect(x, y, w, kMenuDetailH, 4, kFlipperWhite);
-+    gfx.drawRoundRect(x, y, w, kMenuDetailH, 4, kFlipperBlack);
- 
--    gfx.setTextColor(kMenuSubText, kMenuPanel);
-+    gfx.setTextColor(kFlipperGray, kFlipperWhite);
-     gfx.drawString("Current", x + 8, y + 6, 1);
- 
--    gfx.setTextColor(kMenuText, kMenuPanel);
--    gfx.drawString(clipMenuText(String(kPages[idx].label), 16).c_str(), x + 8, y + 20, 1);
-+    gfx.setTextColor(kFlipperBlack, kFlipperWhite);
-+    gfx.drawString(clipMenuText(String(kPages[idx].label), 19).c_str(), x + 8, y + 17, 1);
-+
-+    gfx.setTextColor(line1Color, kFlipperWhite);
-+    gfx.drawString(clipMenuText(line1, 19).c_str(), x + 8, y + 29, 1);
-+    gfx.setTextColor(line2Color, kFlipperWhite);
-+    gfx.drawString(clipMenuText(line2, 19).c_str(), x + 8, y + 39, 1);
- 
--    gfx.setTextColor(line1Color, kMenuPanel);
--    gfx.drawString(clipMenuText(line1, 16).c_str(), x + 8, y + 34, 1);
--    gfx.setTextColor(line2Color, kMenuPanel);
--    gfx.drawString(clipMenuText(line2, 16).c_str(), x + 8, y + 44, 1);
-+    gfx.drawFastHLine(x + 8, y + 49, w - 16, kFlipperGrayLt);
- 
--    gfx.drawFastHLine(x + 8, y + 58, w - 16, kMenuPanelEdge);
-+    gfx.setTextColor(kFlipperGray, kFlipperWhite);
-+    gfx.drawString("Rotation", x + 8, y + 55, 1);
-+    gfx.drawString("Sleep", x + 8, y + 65, 1);
-+    gfx.drawString("Dim", x + 8, y + 75, 1);
- 
--    gfx.setTextColor(kMenuAccent, kMenuPanel);
--    gfx.drawString("Rotation", x + 8, y + 66, 1);
--    gfx.drawString("Sleep", x + 8, y + 80, 1);
--    gfx.drawString("Dim", x + 8, y + 94, 1);
-+    gfx.setTextColor(kFlipperBlack, kFlipperWhite);
-+    gfx.drawRightString(clipMenuText(currentRotationLabel(), 10).c_str(), x + w - 8, y + 55, 1);
-+    gfx.drawRightString(clipMenuText(autoSleepPresetLabel(), 10).c_str(), x + w - 8, y + 65, 1);
-+    gfx.drawRightString(clipMenuText(autoDimTimeoutLabel(), 10).c_str(), x + w - 8, y + 75, 1);
- 
--    gfx.setTextColor(kMenuText, kMenuPanel);
--    gfx.drawRightString(clipMenuText(currentRotationLabel(), 10).c_str(), x + w - 8, y + 66, 1);
--    gfx.drawRightString(clipMenuText(autoSleepPresetLabel(), 10).c_str(), x + w - 8, y + 80, 1);
--    gfx.drawRightString(clipMenuText(autoDimTimeoutLabel(), 10).c_str(), x + w - 8, y + 94, 1);
-+    gfx.drawFastHLine(x + 8, y + 85, w - 16, kFlipperGrayLt);
-+
-+    // Mini dolphin mascot
-+    drawFlipperDolphin(gfx, x + w / 2, y + kMenuDetailH - 17, 1, kFlipperBlack, kFlipperWhite);
- }
- 
- template <typename Canvas>
-@@ -208,18 +255,19 @@ void drawMenuFooter(Canvas& gfx)
- {
-     const int16_t W = gfx.width();
- 
--    gfx.fillRect(0, kMenuFooterY, W, kMenuFooterH, kMenuFooter);
--    gfx.drawFastHLine(0, kMenuFooterY, W, kMenuPanelEdge);
-+    gfx.fillRect(0, kMenuFooterY, W, kMenuFooterH, kFlipperWhite);
-+    gfx.drawFastHLine(0, kMenuFooterY, W, kFlipperBlack);
- 
--    gfx.setTextColor(kMenuSubText, kMenuFooter);
--    gfx.drawString("ENC scroll", 8, kMenuFooterY + 5, 1);
--    gfx.drawCentreString("BOOT open", W / 2, kMenuFooterY + 5, 1);
--    gfx.drawRightString("USER next", W - 8, kMenuFooterY + 5, 1);
-+    gfx.setTextColor(kFlipperBlack, kFlipperWhite);
-+    gfx.drawString("ENC scroll", 6, kMenuFooterY + 6, 1);
-+    gfx.drawCentreString("OK open", W / 2, kMenuFooterY + 6, 1);
-+    gfx.drawRightString("USR next", W - 6, kMenuFooterY + 6, 1);
++        gfx.fillRect(kMenuScrollX - 1, trackY + off, 3, thumbH, kFlipperBlack);
++    }
  }
  
  template <typename Canvas>
@@ -583,6 +558,9 @@ index 2822cf6..35846a6 100644
      drawMenuBackground(gfx);
      drawMenuHeader(gfx);
      drawMenuList(gfx);
+-    drawMenuDetail(gfx);
+-    drawMenuFooter(gfx);
+ }
 diff --git a/examples/factory/page_battery.h b/examples/factory/page_battery.h
 index b407dc9..5a4bdbd 100644
 --- a/examples/factory/page_battery.h
@@ -1586,18 +1564,28 @@ index e8f2634..a84ef2a 100644
      drawMenuItem(Focus::Info, 34);
      drawMenuItem(Focus::Rotation, 58);
 diff --git a/examples/factory/page_startup.h b/examples/factory/page_startup.h
-index bbadec4..593ea7e 100644
+index bbadec4..4d00b55 100644
 --- a/examples/factory/page_startup.h
 +++ b/examples/factory/page_startup.h
-@@ -15,6 +15,7 @@ enum class HardwareProfile : uint8_t {
+@@ -15,6 +15,8 @@ enum class HardwareProfile : uint8_t {
  constexpr uint32_t kFrameMs = 80;
  constexpr uint32_t kPn532WakeDelayMs = 12;
  constexpr uint32_t kPn532ResetPulseMs = 2;
 +constexpr int16_t kFlipHeaderH = 17;
++constexpr uint32_t kAnimMs = 350;  // idle dolphin bob period
  
  TFT_eSprite canvas(&tft);
  bool canvasReady = false;
-@@ -103,14 +104,14 @@ String supportText()
+@@ -23,6 +25,8 @@ bool enterMenuRequested = false;
+ bool allowMenuEntry = true;
+ uint32_t lastDrawMs = 0;
+ int32_t encSnapshot = 0;
++uint8_t animFrame = 0;
++uint32_t lastAnimMs = 0;
+ 
+ bool hasAddr22 = false;
+ bool hasAddr24 = false;
+@@ -103,14 +107,14 @@ String supportText()
  {
      switch (detectedProfile) {
          case HardwareProfile::V10:
@@ -1616,12 +1604,12 @@ index bbadec4..593ea7e 100644
      }
  }
  
-@@ -188,73 +189,82 @@ void detectHardwareProfile()
+@@ -188,73 +192,95 @@ void detectHardwareProfile()
                    allowMenuEntry ? 1 : 0);
  }
  
-+// Flipper desktop style startup: white canvas, top status bar, big dolphin,
-+// wordmark + device info on the right, hint bar at the bottom.
++// Flipper Zero desktop: status bar on top (session clock + battery),
++// big idle dolphin with mood line, device info column on the right.
 +
  template <typename Canvas>
  void drawHeader(Canvas& gfx)
@@ -1633,21 +1621,34 @@ index bbadec4..593ea7e 100644
 -    gfx.setTextDatum(TR_DATUM);
 -    gfx.setTextColor(TFT_CYAN, TFT_NAVY);
 -    gfx.drawString("T-Embed CC1101", gfx.width() - kMargin, 7, 1);
++    const uint32_t sec = millis() / 1000UL;
++    char clockBuf[8];
++    snprintf(clockBuf, sizeof(clockBuf), "%02lu:%02lu",
++             (unsigned long)((sec / 3600UL) % 100UL),
++             (unsigned long)((sec / 60UL) % 60UL));
++
 +    gfx.fillRect(0, 0, gfx.width(), kHeaderH, kFlipperWhite);
-+
-+    gfx.fillRoundRect(4, 4, 9, 9, 2, kFlipperBlack);
-+    gfx.setTextDatum(MC_DATUM);
-+    gfx.setTextColor(kFlipperWhite, kFlipperBlack);
-+    gfx.drawString("T", 8, 8, 1);
-+
      gfx.setTextDatum(TL_DATUM);
 +    gfx.setTextColor(kFlipperBlack, kFlipperWhite);
-+    gfx.drawString("T-Embed CC1101", 17, 5, 1);
++    gfx.drawString(clockBuf, 4, 5, 1);
 +
-+    gfx.setTextColor(kFlipperGray, kFlipperWhite);
-+    gfx.drawRightString(kFactorySoftwareVersion, gfx.width() - 6, 5, 1);
++    const int8_t soc = batterySocPercent();
++    gfx.setTextColor(soc <= 20 && soc > 0 ? kFlipperOrange : kFlipperGray, kFlipperWhite);
++    gfx.drawRightString(soc >= 0 ? String(soc) + "%" : String("--"), gfx.width() - 19, 5, 1);
++    drawBatteryIcon(gfx, gfx.width() - 16, 5, soc);
 +
 +    gfx.drawFastHLine(0, kFlipHeaderH, gfx.width(), kFlipperBlack);
++}
++
++template <typename Canvas>
++void drawDolphinIdle(Canvas& gfx)
++{
++    // four-phase bob keeps the desktop alive like the Flipper idle animation
++    const int8_t bobY[4] = {0, -3, 0, 2};
++    drawFlipperDolphin(gfx, 74, 80 + bobY[animFrame & 3], 3, kFlipperBlack, kFlipperWhite);
++
++    gfx.setTextColor(kFlipperBlack, kFlipperWhite);
++    gfx.drawCentreString("happy  lv 1", 74, 132, 1);
  }
  
  template <typename Canvas>
@@ -1747,7 +1748,7 @@ index bbadec4..593ea7e 100644
  }
  
  template <typename Canvas>
-@@ -268,20 +278,20 @@ void drawProbeLines(Canvas& gfx)
+@@ -268,20 +294,20 @@ void drawProbeLines(Canvas& gfx)
               hasAddr6A ? 'Y' : '-',
               hasAddr6B ? 'Y' : '-');
  
@@ -1756,8 +1757,8 @@ index bbadec4..593ea7e 100644
 -
 -    gfx.setTextColor(allowMenuEntry ? TFT_GREEN : TFT_RED, kUiBg);
 -    gfx.drawString(clipText(supportText(), 31), 106, 38, 1);
-+    gfx.setTextColor(kFlipperGrayLt, kFlipperWhite);
-+    gfx.drawString(probeLine, 6, 142, 1);
++    gfx.setTextColor(kFlipperGray, kFlipperWhite);
++    gfx.drawString(probeLine, 6, 144, 1);
  }
  
  template <typename Canvas>
@@ -1767,7 +1768,7 @@ index bbadec4..593ea7e 100644
 +    gfx.setTextDatum(TL_DATUM);
 +    gfx.fillScreen(kFlipperWhite);
      drawHeader(gfx);
-+    drawFlipperDolphin(gfx, 78, 88, 3, kFlipperBlack, kFlipperWhite);
++    drawDolphinIdle(gfx);
 +    drawWordmark(gfx);
      drawStatusBadge(gfx);
 -    drawInfoCard(gfx);
@@ -1775,6 +1776,30 @@ index bbadec4..593ea7e 100644
      drawProbeLines(gfx);
      drawFooter(gfx);
  }
+@@ -295,6 +321,8 @@ void init()
+     allowMenuEntry = true;
+     lastDrawMs = 0;
+     encSnapshot = g.encRaw;
++    animFrame = 0;
++    lastAnimMs = 0;
+ 
+     canvas.setColorDepth(16);
+     canvasReady = (canvas.createSprite(tft.width(), tft.height()) != nullptr);
+@@ -318,6 +346,14 @@ void update()
+         activity = true;
+     }
+ 
++    // idle animation tick
++    const uint32_t now = millis();
++    if (now - lastAnimMs >= kAnimMs) {
++        lastAnimMs = now;
++        animFrame = (animFrame + 1) & 3;
++        screenDirty = true;
++    }
++
+     if (activity && allowMenuEntry) {
+         enterMenuRequested = true;
+     }
 diff --git a/examples/factory/page_tft.h b/examples/factory/page_tft.h
 index 0712b09..3836b68 100644
 --- a/examples/factory/page_tft.h
