@@ -21,6 +21,7 @@ WS2812, Settings) re-themed to feel like a Flipper.
 | File | Purpose |
 | --- | --- |
 | `update.bat` | Flipper-styled updater: clones the upstream LILYGO repo if missing, pulls new sources, applies the theme, and can build + flash with PlatformIO. |
+| `compile.bat` | Flipper-styled builder: applies the theme, compiles the `T_Embed_CC1101` env with PlatformIO (auto-installs it via pip if missing), then flashes over USB with port auto-detect and retries, and can open the serial monitor. |
 | `flipper-style.patch` | The theme itself (`examples/factory/flipper_style.h` + restyled UI files), applied to the local clone. |
 | `previews/` | Renderings of the actual theme draw calls (menu page 1/2, startup). |
 
@@ -34,6 +35,13 @@ clones it on demand and keeps it in sync.
    if you already cloned it), then applies `flipper-style.patch`.
 3. When PlatformIO is installed (`pip install platformio`) it offers to build
    and then flash the `T_Embed_CC1101` environment over USB.
+
+Or skip straight to hardware:
+
+1. Double-click `compile.bat`.
+2. It applies the theme, compiles the factory firmware, flashes the device
+   (auto-detecting the COM port, with retries and a BOOT-button hint), and
+   offers to open the serial monitor at 115200 baud.
 
 ## Usage (manual / Linux)
 
