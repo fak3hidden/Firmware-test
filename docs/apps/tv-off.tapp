@@ -1,0 +1,14 @@
+{
+  "magic": "TAPP",
+  "format": 1,
+  "id": "tv-off",
+  "name": "TV standby",
+  "version": "1.0.0",
+  "author": "FinOS",
+  "category": "Infrared",
+  "action": "ir_send",
+  "protocol": "NEC",
+  "data": "0x20DF10EF",
+  "items": ["Send NEC", "About"],
+  "text": "Sends a common NEC power code. Replace data with a capture from your own remote."
+}

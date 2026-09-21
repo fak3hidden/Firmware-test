@@ -1,0 +1,23 @@
+:root { --orange:#ff8200; --bg:#0c0c0d; --panel:#141416; --ink:#f4f1ea; --muted:#9a958c; --line:#2a2a2c; }
+* { box-sizing: border-box; }
+html, body { margin:0; height:100%; background:var(--bg); color:var(--ink); font-family: "IBM Plex Sans", "Segoe UI", sans-serif; }
+body { display:grid; grid-template-columns: 260px 1fr; }
+aside { border-right:1px solid var(--line); padding:18px; background:#101012; display:flex; flex-direction:column; gap:10px; }
+.logo { font-size:28px; letter-spacing:.08em; }
+.device-art {
+  height: 120px; background: linear-gradient(#1a1a1c,#111);
+  border:1px solid var(--line); display:flex; align-items:center; justify-content:center;
+  color: var(--orange); font-size: 42px; letter-spacing: .2em;
+}
+.muted { color: var(--muted); font-size: 12px; }
+select, input, button, pre { font: inherit; }
+select, input { background:#0e0e10; color:var(--ink); border:1px solid #333; padding:8px; width:100%; }
+button { background:#1c1c20; color:var(--ink); border:1px solid #333; padding:8px; cursor:pointer; }
+button.primary { background:var(--orange); color:#1a0e00; border-color:var(--orange); }
+main { padding:18px; overflow:auto; }
+.tabs { display:flex; gap:8px; margin-bottom:16px; }
+.tabs button.on { border-color: var(--orange); color: var(--orange); }
+.hidden { display:none; }
+pre { background:#070708; color:#b6ffb0; padding:12px; min-height:200px; overflow:auto; font-size:12px; }
+.row { display:flex; gap:8px; }
+h2 { margin-top:0; }

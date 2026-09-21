@@ -1,0 +1,73 @@
+name: Build FinOS
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  firmware:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install PlatformIO
+        run: pip install -U platformio esptool
+      - name: Build both boards
+        working-directory: firmware
+        run: pio run
+      - name: Merge flash images
+        run: |
+          set -euo pipefail
+          BOOT0=$(find "$HOME/.platformio/packages" -name boot_app0.bin | head -1)
+          echo "boot_app0=$BOOT0"
+          mkdir -p docs/firmware
+          for env in t-embed-cc1101 t-embed-cc1101-plus; do
+            D="firmware/.pio/build/${env}"
+            python -m esptool --chip esp32s3 merge_bin \
+              -o "docs/firmware/finos-${env}.bin" \
+              --flash_mode qio --flash_freq 80m --flash_size 16MB \
+              0x0 "$D/bootloader.bin" \
+              0x8000 "$D/partitions.bin" \
+              0xe000 "$BOOT0" \
+              0x10000 "$D/firmware.bin"
+          done
+          ls -l docs/firmware
+      - uses: actions/upload-artifact@v4
+        with:
+          name: finos-firmware
+          path: |
+            docs/firmware/*.bin
+            firmware/.pio/build/*/firmware.bin
+
+  pages:
+    needs: firmware
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: finos-firmware
+          path: _fw
+      - name: Stage site
+        run: |
+          mkdir -p docs/firmware
+          find _fw -name 'finos-*.bin' -exec cp {} docs/firmware/ \;
+          ls -l docs/firmware
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+      - id: deploy
+        uses: actions/deploy-pages@v4

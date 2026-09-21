@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>qFin</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <aside>
+    <div class="logo">qFin</div>
+    <div class="device-art">FIN</div>
+    <div id="devname">No device</div>
+    <div id="devmeta" class="muted">Connect a T-Embed</div>
+    <select id="ports"></select>
+    <button id="refresh">Refresh</button>
+    <button id="connect" class="primary">Connect</button>
+  </aside>
+  <main>
+    <div class="tabs">
+      <button data-tab="update" class="on">Update</button>
+      <button data-tab="files">File manager</button>
+      <button data-tab="cli">CLI</button>
+      <button data-tab="apps">Apps</button>
+    </div>
+    <section id="update" class="pane">
+      <h2>Firmware update</h2>
+      <p>Flash a merged FinOS image at 0x0 (16MB, QIO). Device should be in download mode (hold encoder, tap reset).</p>
+      <button id="pick">Choose .bin</button>
+      <button id="flash" class="primary">Flash</button>
+      <pre id="flog"></pre>
+    </section>
+    <section id="files" class="pane hidden">
+      <h2>File manager</h2>
+      <div class="row">
+        <input id="path" value="/ext" />
+        <button id="ls">List</button>
+      </div>
+      <pre id="listing"></pre>
+    </section>
+    <section id="cli" class="pane hidden">
+      <h2>CLI</h2>
+      <pre id="cliout"></pre>
+      <input id="clilin" placeholder="help, info, ls /ext" />
+    </section>
+    <section id="apps" class="pane hidden">
+      <h2>Installed apps</h2>
+      <button id="appsls">Refresh</button>
+      <pre id="appsout"></pre>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

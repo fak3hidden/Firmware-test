@@ -1,0 +1,17 @@
+.pio/
+.vscode/
+.idea/
+node_modules/
+dist/
+build/
+out/
+*.elf
+*.map
+.DS_Store
+__pycache__/
+*.pyc
+desktop/node_modules/
+desktop/dist/
+web/node_modules/
+Unselected files/
+.arena/

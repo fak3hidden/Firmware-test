@@ -1,0 +1,11 @@
+{
+  "magic": "TAPP",
+  "format": 1,
+  "id": "stopwatch",
+  "name": "Stopwatch",
+  "version": "1.0.0",
+  "author": "FinOS",
+  "category": "Tools",
+  "items": ["Start", "Reset"],
+  "text": "A tiny stopwatch. OK to leave."
+}

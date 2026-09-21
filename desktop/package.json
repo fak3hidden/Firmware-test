@@ -1,0 +1,27 @@
+{
+  "name": "qfin",
+  "version": "0.1.0",
+  "description": "qFlipper-style companion for FinOS / T-Embed CC1101",
+  "main": "main.js",
+  "author": "FinOS",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --publish never"
+  },
+  "dependencies": {
+    "serialport": "^12.0.0"
+  },
+  "devDependencies": {
+    "electron": "^28.3.3",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "org.finos.qfin",
+    "productName": "qFin",
+    "files": ["main.js", "preload.js", "renderer/**/*"],
+    "linux": { "target": ["AppImage"] },
+    "win": { "target": ["zip"] },
+    "mac": { "target": ["zip"] }
+  }
+}
