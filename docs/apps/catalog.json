@@ -1,0 +1,50 @@
+{
+  "updated": "2026-09-21",
+  "apps": [
+    {
+      "id": "dice",
+      "name": "Dice",
+      "version": "1.0.0",
+      "author": "FinOS",
+      "category": "Games",
+      "description": "Roll a 1–6 die on the 128×64 canvas.",
+      "file": "dice.tapp"
+    },
+    {
+      "id": "stopwatch",
+      "name": "Stopwatch",
+      "version": "1.0.0",
+      "author": "FinOS",
+      "category": "Tools",
+      "description": "Simple elapsed-time helper.",
+      "file": "stopwatch.tapp"
+    },
+    {
+      "id": "tv-off",
+      "name": "TV standby",
+      "version": "1.0.0",
+      "author": "FinOS",
+      "category": "Infrared",
+      "description": "Sends a stored NEC IR code (learn your own set first).",
+      "file": "tv-off.tapp"
+    },
+    {
+      "id": "led-party",
+      "name": "LED party",
+      "version": "1.0.0",
+      "author": "FinOS",
+      "category": "GPIO",
+      "description": "Pulses the encoder RGB ring orange.",
+      "file": "led-party.tapp"
+    },
+    {
+      "id": "about-fin",
+      "name": "About Fin",
+      "version": "1.0.0",
+      "author": "FinOS",
+      "category": "Media",
+      "description": "Meet the mascot.",
+      "file": "about-fin.tapp"
+    }
+  ]
+}

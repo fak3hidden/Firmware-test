@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="favicon.png" />
+  <title>qFin — desktop companion</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="index.html"><span class="dot"></span>FinOS</a>
+        <nav>
+      <a href="index.html">Home</a>
+      <a href="install.html">Install</a>
+      <a href="flash.html">Flasher</a>
+      <a href="store.html">App store</a>
+      <a href="phone.html">Phone</a>
+      <a class="active" href="qfin.html">qFin</a>
+    </nav>
+  </header>
+  <main class="page">
+    <div class="kicker">Electron · like qFlipper</div>
+    <h1>qFin talks to<br/>the handheld.</h1>
+    <p class="lede">
+      Device info, file manager for <code>/ext</code>, CLI, firmware update via esptool,
+      and one-click app install from the store. Source lives in <code>desktop/</code>.
+    </p>
+    <div class="cta">
+      <a class="btn" href="install.html">Download installer</a>
+      <a class="btn ghost" href="https://github.com/fak3hidden/Firmware-test/tree/arena/01a0c3cb-firmware-test/desktop">qFin source</a>
+    </div>
+    <div class="card" style="margin-top:24px">
+      <h3>Run it</h3>
+      <p>
+        <code>cd desktop && npm install && npm start</code><br/>
+        Packaged builds: <code>npm run dist</code> (electron-builder, GitHub Action artifacts).
+        A Python CLI twin lives at <code>desktop/qfin.py</code> if you do not want Electron.
+      </p>
+    </div>
+  </main>
+</body>
+</html>

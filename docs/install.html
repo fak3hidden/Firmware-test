@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="favicon.png" />
+  <title>Install FinOS</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="index.html"><span class="dot"></span>FinOS</a>
+        <nav>
+      <a href="index.html">Home</a>
+      <a class="active" href="install.html">Install</a>
+      <a href="flash.html">Flasher</a>
+      <a href="store.html">App store</a>
+      <a href="phone.html">Phone</a>
+      <a href="qfin.html">qFin</a>
+    </nav>
+  </header>
+  <main class="page">
+    <div class="kicker">Setup wizard</div>
+    <h1>Install firmware<br/>and qFin.</h1>
+    <p class="lede">One wizard: desktop companion for Windows / macOS / Linux, then flash the T-Embed over USB. Chrome or Edge required for the flash step.</p>
+
+    <ol class="steps" id="steps" style="list-style:none;padding:0;display:flex;gap:8px;flex-wrap:wrap">
+      <li class="tag" data-s="1">1. Desktop app</li>
+      <li class="tag" data-s="2">2. Flash firmware</li>
+      <li class="tag" data-s="3">3. Bluetooth</li>
+    </ol>
+
+    <section class="card" id="step1" style="margin-top:18px">
+      <h3>1. Install qFin</h3>
+      <p>qFin is the qFlipper-style companion: files, CLI, updates, app install.</p>
+      <div class="row">
+        <a class="btn" id="dl-win" href="https://github.com/fak3hidden/Firmware-test/releases/latest/download/qFin-Setup.exe">Windows installer</a>
+        <a class="btn ghost" id="dl-mac" href="https://github.com/fak3hidden/Firmware-test/releases/latest/download/qFin-mac.zip">macOS</a>
+        <a class="btn ghost" id="dl-lin" href="https://github.com/fak3hidden/Firmware-test/releases/latest/download/qFin.AppImage">Linux AppImage</a>
+      </div>
+      <p class="meta">From source: <code>cd desktop && npm install && npm start</code> · or <code>python3 desktop/qfin.py</code></p>
+    </section>
+
+    <section class="card" id="step2" style="margin-top:18px">
+      <h3>2. Flash firmware</h3>
+      <p>Hold the <b>encoder knob</b> (BOOT) and tap RESET. Pick your board, then flash. You can also jump to the full flasher.</p>
+      <div class="row">
+        <a class="btn" href="flash.html">Open the web flasher</a>
+      </div>
+    </section>
+
+    <section class="card" id="step3" style="margin-top:18px">
+      <h3>3. Pair phone or PC over Bluetooth</h3>
+      <p>On the device: Main menu → Bluetooth → Toggle On. Advertises as <b>Flipper</b> (Nordic UART). Then:</p>
+      <div class="row">
+        <a class="btn" href="phone.html">Phone (Web Bluetooth)</a>
+        <a class="btn ghost" href="qfin.html">PC via qFin USB or BLE</a>
+      </div>
+      <p class="meta">Buttons from the phone: U D L R O B. Same file/app protocol as USB.</p>
+    </section>
+  </main>
+</body>
+</html>

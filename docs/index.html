@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="favicon.png" />
+  <title>FinOS — Flipper-style firmware for T-Embed CC1101</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="index.html"><span class="dot"></span>FinOS</a>
+        <nav>
+      <a class="active" href="index.html">Home</a>
+      <a href="install.html">Install</a>
+      <a href="flash.html">Flasher</a>
+      <a href="store.html">App store</a>
+      <a href="phone.html">Phone</a>
+      <a href="qfin.html">qFin</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div>
+      <div class="kicker">T-Embed CC1101 &amp; Plus</div>
+      <h1>A 128×64<br/>Flipper UI<br/>on colour LCD.</h1>
+      <p class="lede">
+        Official Flipper chrome on the T-Embed: 3-line framed main menu, 13px status bar,
+        bottom action buttons, dolphin desktop. 128×64 ink, 2× on the 170×320 ST7789.
+        Bluetooth (Nordic UART) for phone and PC. Not affiliated with Flipper Devices.
+      </p>
+      <div class="cta">
+        <a class="btn" href="install.html">Install firmware + qFin</a>
+        <a class="btn ghost" href="phone.html">Phone over Bluetooth</a>
+      </div>
+    </div>
+    <div class="device">
+      <div class="bezel"><canvas id="emu" aria-label="FinOS demo"></canvas></div>
+      <div class="knob-row">
+        <button id="backbtn" class="btn ghost" type="button">Back</button>
+        <div class="hint">keys · encoder · enter</div>
+        <div id="knob" class="knob" title="Click = OK, scroll = rotate"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>On the device</h2>
+    <div class="shots">
+      <img src="img/screen-desktop.png" alt="Desktop with Fin the dolphin" />
+      <img src="img/screen-menu.png" alt="Main menu" />
+      <img src="img/screen-subghz.png" alt="Sub-GHz read" />
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>What ships</h2>
+    <div class="grid">
+      <div class="card">
+        <h3>Firmware</h3>
+        <p>Flipper OFW layout: desktop, 3-line main menu, Sub-GHz OOK, NFC UID, IR, nRF24 (Plus), GPIO, Bad USB, Bluetooth, Passport, archive, settings.</p>
+      </div>
+      <div class="card">
+        <h3>Web flasher</h3>
+        <p>Chrome/Edge Web Serial talks to the ESP32-S3. Flash FinOS, or — if FinOS is already running — push an app straight onto the device.</p>
+      </div>
+      <div class="card">
+        <h3>App store</h3>
+        <p>Catalog of <code>.tapp</code> JSON apps. Download, sideload, or install over USB without a reflash. Upload your own.</p>
+      </div>
+      <div class="card">
+        <h3>qFin desktop</h3>
+        <p>Electron companion in the spirit of qFlipper: device info, file manager, CLI, firmware update, app install.</p>
+      </div>
+      <div class="card">
+        <h3>Both boards</h3>
+        <p>T-Embed CC1101 and T-Embed CC1101 Plus. Plus enables the onboard nRF24. Everything else is shared.</p>
+      </div>
+      <div class="card">
+        <h3>Open assets</h3>
+        <p>UI font is Micro 5 (SIL OFL). Icons and Fin the dolphin are original 1-bit artwork. MIT licensed firmware.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    FinOS is original firmware for LilyGO hardware. It is not affiliated with Flipper Devices.
+    Use radios only on equipment and frequencies you are allowed to use.
+    <br/>Micro 5 font © Soft Type Project, SIL Open Font License 1.1.
+  </footer>
+  <script src="js/emu.js"></script>
+</body>
+</html>

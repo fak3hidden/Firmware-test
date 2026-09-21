@@ -1,0 +1,77 @@
+name: Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  firmware:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -U platformio esptool
+      - run: pio run
+        working-directory: firmware
+      - name: Merge
+        run: |
+          BOOT0=$(find "$HOME/.platformio/packages" -name boot_app0.bin | head -1)
+          mkdir -p dist
+          for env in t-embed-cc1101 t-embed-cc1101-plus; do
+            D=firmware/.pio/build/$env
+            python -m esptool --chip esp32s3 merge_bin \
+              -o dist/finos-${env}.bin \
+              --flash_mode qio --flash_freq 80m --flash_size 16MB \
+              0x0 $D/bootloader.bin 0x8000 $D/partitions.bin \
+              0xe000 "$BOOT0" 0x10000 $D/firmware.bin
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: firmware
+          path: dist/*.bin
+
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install
+        working-directory: desktop
+      - run: npm run dist
+        working-directory: desktop
+        continue-on-error: true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qfin-${{ matrix.os }}
+          path: |
+            desktop/dist/*.exe
+            desktop/dist/*.AppImage
+            desktop/dist/*.zip
+            desktop/dist/*.dmg
+          if-no-files-found: ignore
+
+  publish:
+    needs: [firmware, desktop]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true

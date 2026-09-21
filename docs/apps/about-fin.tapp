@@ -1,0 +1,11 @@
+{
+  "magic": "TAPP",
+  "format": 1,
+  "id": "about-fin",
+  "name": "About Fin",
+  "version": "1.0.0",
+  "author": "FinOS",
+  "category": "Media",
+  "items": ["Who is Fin?", "Credits"],
+  "text": "Fin is the original 1-bit mascot of FinOS. Not a Flipper dolphin."
+}

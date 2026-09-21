@@ -1,0 +1,12 @@
+{
+  "magic": "TAPP",
+  "format": 1,
+  "id": "led-party",
+  "name": "LED party",
+  "version": "1.0.0",
+  "author": "FinOS",
+  "category": "GPIO",
+  "action": "led",
+  "items": ["Pulse orange", "Off"],
+  "text": "Encoder RGB ring."
+}

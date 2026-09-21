@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="favicon.png" />
+  <title>FinOS phone — Bluetooth</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="index.html"><span class="dot"></span>FinOS</a>
+        <nav>
+      <a href="index.html">Home</a>
+      <a href="install.html">Install</a>
+      <a href="flash.html">Flasher</a>
+      <a href="store.html">App store</a>
+      <a class="active" href="phone.html">Phone</a>
+      <a href="qfin.html">qFin</a>
+    </nav>
+  </header>
+  <main class="page">
+    <div class="kicker">Web Bluetooth · Nordic UART</div>
+    <h1>Control from<br/>your phone.</h1>
+    <p class="lede">
+      Same idea as the Flipper mobile app: connect over BLE, send buttons, pull a screenshot, install a .tapp.
+      Chrome / Edge on Android, or Safari 17+ with Web Bluetooth flags. Device name: <b>Flipper</b>.
+    </p>
+    <div class="row">
+      <button class="btn" id="ble-connect" type="button">Connect Bluetooth</button>
+      <span id="ble-status" class="meta">Idle</span>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h3>Remote</h3>
+      <div class="row">
+        <button class="btn ghost" data-k="U">Up</button>
+        <button class="btn ghost" data-k="D">Down</button>
+        <button class="btn" data-k="O">OK</button>
+        <button class="btn ghost" data-k="B">Back</button>
+      </div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn ghost" id="shot" type="button">Screenshot</button>
+      <button class="btn ghost" id="ping" type="button">Ping</button>
+    </div>
+    <canvas id="screen" width="512" height="256" style="image-rendering:pixelated;background:#fff;border:8px solid #ff8200;margin-top:12px;width:100%;max-width:512px"></canvas>
+    <div class="log" id="log" style="margin-top:12px"></div>
+  </main>
+  <script type="module">
+    import { encodeFrame, decodeFrames } from "./js/tfproto.js";
+    const NUS = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
+    const RX  = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
+    const TX  = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
+    const log = (s) => { document.getElementById("log").textContent += s + "\n"; };
+    let rxChar, txChar, device;
+    let acc = new Uint8Array(0);
+    function concat(a, b) {
+      const o = new Uint8Array(a.length + b.length);
+      o.set(a); o.set(b, a.length); return o;
+    }
+    async function connect() {
+      if (!navigator.bluetooth) throw new Error("Web Bluetooth not available");
+      device = await navigator.bluetooth.requestDevice({
+        filters: [{ namePrefix: "Flipper" }, { services: [NUS] }],
+        optionalServices: [NUS],
+      });
+      const server = await device.gatt.connect();
+      const svc = await server.getPrimaryService(NUS);
+      rxChar = await svc.getCharacteristic(RX);
+      txChar = await svc.getCharacteristic(TX);
+      await txChar.startNotifications();
+      txChar.addEventListener("characteristicvaluechanged", (ev) => {
+        const u8 = new Uint8Array(ev.target.value.buffer);
+        acc = concat(acc, u8);
+        const { frames, rest } = decodeFrames(acc);
+        acc = rest;
+        for (const fr of frames) {
+          if (fr.cmd === 0x8B) drawScreen(fr.payload);
+          else log(fr.text || ("cmd " + fr.cmd));
+        }
+      });
+      document.getElementById("ble-status").textContent = "Connected to " + device.name;
+      log("BLE up");
+    }
+    function drawScreen(buf) {
+      const c = document.getElementById("screen").getContext("2d");
+      c.imageSmoothingEnabled = false;
+      c.fillStyle = "#fff"; c.fillRect(0,0,512,256);
+      c.fillStyle = "#000";
+      for (let y = 0; y < 64; y++) {
+        for (let x = 0; x < 128; x++) {
+          if ((buf[y * 16 + (x >> 3)] >> (7 - (x & 7))) & 1)
+            c.fillRect(x * 4, y * 4, 4, 4);
+        }
+      }
+    }
+    document.getElementById("ble-connect").onclick = () => connect().catch((e) => { log(e.message); });
+    document.querySelectorAll("[data-k]").forEach((b) => {
+      b.onclick = async () => {
+        if (!rxChar) return log("Connect first");
+        await rxChar.writeValueWithoutResponse(new TextEncoder().encode(b.dataset.k));
+      };
+    });
+    document.getElementById("ping").onclick = async () => {
+      if (!rxChar) return log("Connect first");
+      await rxChar.writeValueWithoutResponse(encodeFrame(0x01));
+    };
+    document.getElementById("shot").onclick = async () => {
+      if (!rxChar) return log("Connect first");
+      await rxChar.writeValueWithoutResponse(encodeFrame(0x0B));
+    };
+  </script>
+</body>
+</html>

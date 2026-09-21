@@ -1,0 +1,12 @@
+{
+  "magic": "TAPP",
+  "format": 1,
+  "id": "dice",
+  "name": "Dice",
+  "version": "1.0.0",
+  "author": "FinOS",
+  "category": "Games",
+  "description": "Roll a die.",
+  "items": ["Roll", "About"],
+  "text": "OK to roll. Encoder picks faces in spirit."
+}
