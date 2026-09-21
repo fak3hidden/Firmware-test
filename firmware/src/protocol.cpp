@@ -5,6 +5,7 @@
 #include "canvas.h"
 #include "led.h"
 #include "appvm.h"
+#include "ble.h"
 #include <string.h>
 
 /* Text CLI on USB CDC, plus a framed binary mode.
@@ -26,18 +27,34 @@ static uint8_t crc8(const uint8_t* p, int n) {
     return c;
 }
 
+static uint8_t bleIn[2048];
+static int bleInN = 0;
+
 static void sendFrame(uint8_t cmd, const uint8_t* p, uint16_t n) {
-    uint8_t hdr[5] = {'T', 'F', 0x01, cmd, 0};
-    Serial.write(hdr, 4);
-    Serial.write((uint8_t)(n & 0xFF));
-    Serial.write((uint8_t)(n >> 8));
-    if (n && p) Serial.write(p, n);
+    static uint8_t hdr[7 + 1800];
+    if (n >= 1800) { n = 0; p = nullptr; }
+    hdr[0] = 'T'; hdr[1] = 'F'; hdr[2] = 0x01; hdr[3] = cmd;
+    hdr[4] = (uint8_t)(n & 0xFF);
+    hdr[5] = (uint8_t)(n >> 8);
+    if (n && p) memcpy(hdr + 6, p, n);
     uint8_t cr = cmd;
     cr = crc8(&cr, 1);
-    uint8_t ln[2] = {(uint8_t)(n & 0xFF), (uint8_t)(n >> 8)};
+    uint8_t ln[2] = {hdr[4], hdr[5]};
     cr ^= crc8(ln, 2);
     if (n && p) cr ^= crc8(p, n);
-    Serial.write(cr);
+    hdr[6 + n] = cr;
+    size_t tot = 7 + n;
+    Serial.write(hdr, tot);
+    Ble::send(hdr, tot);
+}
+
+void Protocol::fromBle(const uint8_t* data, size_t n) {
+    if (!data || !n) return;
+    if (bleInN + (int)n > (int)sizeof(bleIn)) bleInN = 0;
+    size_t k = n;
+    if (bleInN + (int)k > (int)sizeof(bleIn)) k = sizeof(bleIn) - bleInN;
+    memcpy(bleIn + bleInN, data, k);
+    bleInN += (int)k;
 }
 
 static void sendStr(uint8_t cmd, const char* s) {
@@ -171,6 +188,17 @@ void Protocol::init() {
 }
 
 void Protocol::poll() {
+    if (bleInN >= 7 && bleIn[0] == 'T' && bleIn[1] == 'F' && bleIn[2] == 0x01) {
+        uint16_t n = (uint16_t)(bleIn[4] | (bleIn[5] << 8));
+        int need = 6 + n + 1;
+        if (n <= 1800 && bleInN >= need) {
+            handleCmd(bleIn[3], bleIn + 6, n);
+            memmove(bleIn, bleIn + need, bleInN - need);
+            bleInN -= need;
+        }
+    } else if (bleInN >= 3 && !(bleIn[0] == 'T' && bleIn[1] == 'F')) {
+        bleInN = 0;
+    }
     while (Serial.available()) {
         gHost = true;
         lastByte = millis();

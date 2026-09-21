@@ -21,6 +21,7 @@
       <button data-tab="files">File manager</button>
       <button data-tab="cli">CLI</button>
       <button data-tab="apps">Apps</button>
+      <button data-tab="setup">Setup</button>
     </div>
     <section id="update" class="pane">
       <h2>Firmware update</h2>
@@ -46,6 +47,15 @@
       <h2>Installed apps</h2>
       <button id="appsls">Refresh</button>
       <pre id="appsout"></pre>
+    </section>
+    <section id="setup" class="pane hidden">
+      <h2>Setup wizard</h2>
+      <p>1. Hold the encoder knob and tap RESET to enter download mode.</p>
+      <p>2. Choose a merged FinOS image and flash it.</p>
+      <p>3. After reboot, Connect above. Enable Bluetooth on the device to pair a phone.</p>
+      <button id="pick2">Choose .bin</button>
+      <button id="flash2" class="primary">Flash firmware</button>
+      <p class="muted">Phone: open the FinOS site → Phone, connect to device name “Flipper”.</p>
     </section>
   </main>
   <script src="app.js"></script>

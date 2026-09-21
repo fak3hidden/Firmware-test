@@ -1,5 +1,6 @@
 #include "../scene.h"
 #include "../gui/widgets.h"
+#include "../gui/elements.h"
 #include "../gui/assets_fonts.h"
 #include "../drivers/ir.h"
 #include "../storage.h"
@@ -28,7 +29,7 @@ static void enter() {
 }
 static void drawLearn(Canvas& c) {
     c.clear(0);
-    statusbar_draw(c, "IR Learn");
+    app_header(c, "IR Learn");
     if (!have) {
         c.text(8, 24, "Point remote", &tf_primary);
         c.text(8, 34, "and press a key", &tf_primary);
@@ -43,8 +44,9 @@ static void drawLearn(Canvas& c) {
             snprintf(b, sizeof(b), "%d timings", rawn);
             c.text(8, 30, b, &tf_primary);
         }
-        c.text(8, 48, "OK send  Back save", &tf_secondary);
+        elements_button_right(c, "Send");
     }
+    elements_button_left(c, "Back");
 }
 static void draw(Canvas& c) {
     if (mode == 0) menu.draw(c);

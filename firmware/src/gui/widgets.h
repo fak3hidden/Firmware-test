@@ -1,11 +1,9 @@
 #pragma once
 #include "../canvas.h"
 #include "../input.h"
+#include "assets.h"
 
 struct Scene;
-
-/* Status bar: 12 px high, drawn by most scenes. */
-void statusbar_draw(Canvas& c, const char* title = nullptr);
 
 struct MenuItem {
     const char* label;

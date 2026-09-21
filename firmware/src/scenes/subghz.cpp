@@ -1,5 +1,6 @@
 #include "../scene.h"
 #include "../gui/widgets.h"
+#include "../gui/elements.h"
 #include "../gui/assets_fonts.h"
 #include "../drivers/cc1101.h"
 #include "../storage.h"
@@ -47,7 +48,7 @@ static void exit() {
 
 static void drawRead(Canvas& c, bool raw) {
     c.clear(0);
-    statusbar_draw(c, raw ? "Sub-GHz RAW" : "Sub-GHz Read");
+    app_header(c, raw ? "Sub-GHz RAW" : "Sub-GHz Read");
     c.text(4, 16, flab[fi], &tf_big);
     c.text(70, 22, "MHz", &tf_primary);
     c.text(4, 36, "Listening...", &tf_primary);
@@ -55,12 +56,14 @@ static void drawRead(Canvas& c, bool raw) {
     snprintf(b, sizeof(b), "RSSI %d dBm", rssi);
     c.text(4, 46, b, &tf_secondary);
     snprintf(b, sizeof(b), "pulses %d", capn);
-    c.text(4, 54, b, &tf_secondary);
+    c.text(4, 46, b, &tf_secondary);
+    elements_button_left(c, "Back");
+    elements_button_right(c, "Save");
 }
 
 static void drawAnalyzer(Canvas& c) {
     c.clear(0);
-    statusbar_draw(c, "Freq Analyzer");
+    app_header(c, "Freq Analyzer");
     /* hop display */
     c.text(4, 16, flab[fi], &tf_big);
     c.text(70, 22, "MHz", &tf_primary);
@@ -73,7 +76,7 @@ static void drawAnalyzer(Canvas& c) {
 
 static void drawSaved(Canvas& c) {
     c.clear(0);
-    statusbar_draw(c, "Saved");
+    app_header(c, "Saved");
     if (nfiles == 0) {
         c.text(8, 28, "No captures", &tf_primary);
         return;

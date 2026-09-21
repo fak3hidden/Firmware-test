@@ -54,7 +54,11 @@ python3 tools/gen_assets.py
 
 Needs Pillow + fontTools. Font: Micro 5, SIL OFL 1.1.
 
-## USB protocol
+## USB + Bluetooth protocol
 
 Framed `TF\x01` plus a human CLI (`help`, `info`, `ls /ext`, …). See `src/protocol.cpp`.
+The same frames go out over BLE Nordic UART (`6E400001-…`). One-byte writes
+`U D L R O B` are remote keys (Up/Down/Left/Right/OK/Back).
 Apps are JSON `.tapp` files dropped in `/ext/apps`.
+
+Advertised name: **Flipper**. Toggle under Main menu → Bluetooth.

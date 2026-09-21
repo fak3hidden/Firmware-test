@@ -1,11 +1,11 @@
 #include "../scene.h"
-#include "../gui/widgets.h"
+#include "../gui/elements.h"
 #include "../gui/assets_fonts.h"
-#include "../gui/assets_icons.h"
 #include "../dolphin/assets_dolphin.h"
 #include "../board.h"
 #include "../input.h"
 #include "../led.h"
+#include "../ble.h"
 
 static uint8_t frame = 0;
 static uint8_t anim = 0; /* 0 idle, 1 happy, 2 sleep */
@@ -17,17 +17,16 @@ static void enter() {
 }
 static void draw(Canvas& c) {
     c.clear(0);
-    statusbar_draw(c, nullptr);
-    const TfIcon* ic = &tfi_d_idle0;
-    if (anim == 0) ic = dolphin_idle[frame % dolphin_idle_count];
-    else if (anim == 1) ic = dolphin_happy[frame % dolphin_happy_count];
-    else ic = dolphin_sleep[frame % dolphin_sleep_count];
-    int x = (CANVAS_W - ic->w) / 2;
-    int y = 12 + (CANVAS_H - 12 - ic->h) / 2;
+    statusbar_draw(c);
+    const TfIcon* ic = dolphin_idle[frame % dolphin_idle_count];
+    if (anim == 1) ic = dolphin_happy[frame % dolphin_happy_count];
+    else if (anim == 2) ic = dolphin_sleep[frame % dolphin_sleep_count];
+    /* Desktop window starts at y=13. Centre the mascot in the remaining 51px. */
+    int x = 8;
+    int y = 13 + (51 - ic->h) / 2;
+    if (y < 13) y = 13;
+    c.setColor(1);
     c.icon(x, y, ic);
-    /* hint */
-    c.text(2, 56, "OK menu", &tf_secondary);
-    if (Board::isPlus()) c.textRight(126, 56, "Plus", &tf_secondary);
 }
 static void input(const InputEvent& e) {
     if (e.type != InputTypeShort && e.type != InputTypeLong) return;
@@ -35,18 +34,23 @@ static void input(const InputEvent& e) {
         Scenes::push(&scene_main_menu);
         return;
     }
-    if (e.key == InputKeyUp || e.key == InputKeyLeft) {
-        anim = (uint8_t)((anim + 2) % 3);
-        frame = 0; gCanvas.markDirty();
-        Led::blink(255, 90, 0, 120);
+    if (e.key == InputKeyDown && e.type == InputTypeShort) {
+        Scenes::push(&scene_archive);
+        return;
     }
-    if (e.key == InputKeyDown || e.key == InputKeyRight) {
+    if (e.key == InputKeyUp && e.type == InputTypeShort) {
+        Scenes::push(&scene_passport);
+        return;
+    }
+    if (e.key == InputKeyLeft || e.key == InputKeyRight) {
         anim = (uint8_t)((anim + 1) % 3);
-        frame = 0; gCanvas.markDirty();
+        frame = 0;
+        Led::blink(255, 90, 0, 80);
+        gCanvas.markDirty();
     }
     if (e.key == InputKeyOk && e.type == InputTypeLong) {
         anim = 1; frame = 0; lastPet = millis();
-        Led::blink(255, 40, 80, 250);
+        Led::blink(255, 40, 80, 200);
         gCanvas.markDirty();
     }
 }

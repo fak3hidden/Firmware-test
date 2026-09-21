@@ -9,6 +9,7 @@
 #include "protocol.h"
 #include "led.h"
 #include "appvm.h"
+#include "ble.h"
 #include "drivers/cc1101.h"
 #include "drivers/pn532.h"
 #include "drivers/ir.h"
@@ -29,6 +30,7 @@ void setup() {
     IR::init();
     if (Board::isPlus()) NRF24::init();
     AppVM::init();
+    Ble::init();
 
     Scenes::init();
     Scenes::push(&scene_desktop);
@@ -44,10 +46,17 @@ void loop() {
         Scenes::input(e);
         gCanvas.markDirty();
     }
+    uint8_t rk, rt;
+    if (Ble::popRemote(rk, rt)) {
+        InputEvent re{(InputKey)rk, (InputType)rt};
+        Scenes::input(re);
+        gCanvas.markDirty();
+    }
     uint32_t now = millis();
     Scenes::tick(now);
     Led::tick(now);
     Protocol::poll();
+    Ble::poll();
 
     if (gCanvas.dirty) {
         Scenes::draw(gCanvas);

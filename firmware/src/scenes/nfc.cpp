@@ -1,5 +1,6 @@
 #include "../scene.h"
 #include "../gui/widgets.h"
+#include "../gui/elements.h"
 #include "../gui/assets_fonts.h"
 #include "../drivers/pn532.h"
 #include "../storage.h"
@@ -34,17 +35,18 @@ static void enter() {
 }
 static void drawRead(Canvas& c) {
     c.clear(0);
-    statusbar_draw(c, "NFC Read");
+    app_header(c, "NFC Read");
     if (!got) {
         c.text(8, 24, "Place card on", &tf_primary);
         c.text(8, 34, "the back...", &tf_primary);
-        c.text(8, 52, "PN532 13.56 MHz", &tf_secondary);
+        c.text(8, 46, "PN532 13.56 MHz", &tf_secondary);
     } else {
         c.text(8, 18, "ISO14443-A", &tf_primary_bold);
         c.text(8, 30, "UID:", &tf_primary);
         c.text(8, 40, uidhex, &tf_primary);
-        c.text(8, 54, "OK to save", &tf_secondary);
+        elements_button_right(c, "Save");
     }
+    elements_button_left(c, "Back");
 }
 static void draw(Canvas& c) {
     if (mode == 0) menu.draw(c);

@@ -40,6 +40,8 @@ extern const Scene scene_settings;
 extern const Scene scene_about;
 extern const Scene scene_nrf24;
 extern const Scene scene_wifi;
+extern const Scene scene_bluetooth;
+extern const Scene scene_passport;
 extern const Scene scene_keyboard;
 extern const Scene scene_dialog;
 extern const Scene scene_popup;

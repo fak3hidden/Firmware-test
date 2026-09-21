@@ -154,6 +154,11 @@ int Canvas::textWidth(const char* s, const TfFont* f) const {
     return w;
 }
 
+int Canvas::str(int x, int baseline, const char* s, const TfFont* f) {
+    if (!f) return 0;
+    return text(x, baseline - f->cap, s, f);
+}
+
 int Canvas::text(int x, int y, const char* s, const TfFont* f) {
     if (!s || !f) return 0;
     int px = x;

@@ -1,5 +1,6 @@
 #include "../scene.h"
 #include "../gui/widgets.h"
+#include "../gui/elements.h"
 #include "../gui/assets_fonts.h"
 #include "../gui/assets_icons.h"
 #include "../board.h"
@@ -20,10 +21,12 @@
 /* ---------- 125 kHz RFID (no hardware) ---------- */
 static void r_enter() {}
 static void r_draw(Canvas& c) {
-    c.clear(0); statusbar_draw(c, "125 kHz RFID");
-    c.text(6, 18, "No 125 kHz radio", &tf_primary_bold);
-    c.text(6, 30, "on T-Embed CC1101.", &tf_primary);
-    c.text(6, 42, "Use NFC for 13.56.", &tf_primary);
+    c.clear(0);
+    c.setColor(1);
+    c.str(4, 11, "125 kHz RFID", &tf_primary);
+    c.str(4, 28, "No 125 kHz radio on this", &tf_secondary);
+    c.str(4, 38, "hardware. Use NFC (13.56).", &tf_secondary);
+    elements_button_left(c, "Back");
 }
 static void r_in(const InputEvent& e) {
     if (e.key == InputKeyBack && e.type == InputTypeShort) Scenes::pop();
@@ -32,7 +35,7 @@ const Scene scene_rfid = { "RFID", r_enter, nullptr, r_draw, r_in, nullptr };
 
 /* ---------- iButton ---------- */
 static void ib_draw(Canvas& c) {
-    c.clear(0); statusbar_draw(c, "iButton");
+    c.clear(0); app_header(c, "iButton");
     c.text(6, 18, "No 1-Wire probe", &tf_primary_bold);
     c.text(6, 30, "wired on this board.", &tf_primary);
     c.text(6, 42, "Use GPIO to bitbang.", &tf_primary);
@@ -41,7 +44,7 @@ const Scene scene_ibutton = { "iButton", r_enter, nullptr, ib_draw, r_in, nullpt
 
 /* ---------- U2F ---------- */
 static void u_draw(Canvas& c) {
-    c.clear(0); statusbar_draw(c, "U2F");
+    c.clear(0); app_header(c, "U2F");
     c.text(6, 20, "U2F / FIDO is not", &tf_primary);
     c.text(6, 30, "enabled in this", &tf_primary);
     c.text(6, 40, "build.", &tf_primary);
@@ -75,7 +78,7 @@ static void gpio_draw(Canvas& c) {
     if (gMode == 0) { gMenu.draw(c); return; }
     c.clear(0);
     if (gMode == 1) {
-        statusbar_draw(c, "GPIO");
+        app_header(c, "GPIO");
         for (int i = 0; i < 6; i++) {
             int y = 13 + i * 8;
             if (i == gPin) { c.rbox(1, y - 1, 126, 8, 2); c.setColor(0); }
@@ -84,7 +87,7 @@ static void gpio_draw(Canvas& c) {
             c.setColor(1);
         }
     } else if (gMode == 2) {
-        statusbar_draw(c, "RGB LEDs");
+        app_header(c, "RGB LEDs");
         c.text(8, 20, "Encoder: hue", &tf_primary);
         char b[16]; snprintf(b, sizeof(b), "H=%d", gLedHue);
         c.text(8, 32, b, &tf_big);
@@ -169,9 +172,13 @@ static void bad_in(const InputEvent& e) {
         int s = bMenu.selected();
         if (s == 0) {
             hid_ensure();
+#if FINOS_HID
             delay(400);
             Keyboard.print(script);
             popup_show("Bad USB", "Typed", 700);
+#else
+            popup_show("Bad USB", "HID not in this build", 900);
+#endif
         } else if (s == 1) {
             keyboard_show("Demo text", script, sizeof(script), kdone);
         } else {
@@ -196,7 +203,7 @@ static void n_enter() {
 }
 static void n_draw(Canvas& c) {
     if (nMode == 0) { nMenu.draw(c); return; }
-    c.clear(0); statusbar_draw(c, "nRF24 Scan");
+    c.clear(0); app_header(c, "nRF24 Scan");
     /* 126 channels -> 126 px wide sparkline in 120 px */
     for (int i = 0; i < 120; i++) {
         int h = hits[i] ? (hits[i] * 6 + 2) : 0;
@@ -238,7 +245,7 @@ static const MenuItem wItems[] = {
 static void w_enter() { wMode = 0; wMenu.set("Wi-Fi", wItems, 2); wMenu.show_icon = false; }
 static void w_draw(Canvas& c) {
     if (wMode == 0) { wMenu.draw(c); return; }
-    c.clear(0); statusbar_draw(c, "Wi-Fi Scan");
+    c.clear(0); app_header(c, "Wi-Fi Scan");
     if (wCount == 0) { c.text(8, 28, "No APs", &tf_primary); return; }
     for (int i = 0; i < wCount && i < 5; i++) {
         int y = 14 + i * 9;
@@ -283,7 +290,7 @@ const Scene scene_wifi = { "Wi-Fi", w_enter, nullptr, w_draw, w_in, nullptr };
 static int aSel = 0;
 static void a_enter() { AppVM::init(); aSel = 0; }
 static void a_draw(Canvas& c) {
-    c.clear(0); statusbar_draw(c, "Applications");
+    c.clear(0); app_header(c, "Applications");
     int n = AppVM::count();
     if (n == 0) {
         c.text(8, 22, "No apps installed.", &tf_primary);
@@ -317,7 +324,7 @@ static int rSel = 0, rMode = 0, fSel = 0, fN = 0;
 static char fNames[16][32];
 static void ar_enter() { rMode = 0; rSel = 0; }
 static void ar_draw(Canvas& c) {
-    c.clear(0); statusbar_draw(c, "Archive");
+    c.clear(0); app_header(c, "Archive");
     if (rMode == 0) {
         for (int i = 0; i < 5; i++) {
             int y = 14 + i * 9;
@@ -421,7 +428,7 @@ const Scene scene_settings = { "Settings", set_enter, nullptr, set_draw, set_in,
 
 /* ---------- About ---------- */
 static void ab_draw(Canvas& c) {
-    c.clear(0); statusbar_draw(c, "About");
+    c.clear(0); app_header(c, "About");
     c.text(6, 16, FINOS_NAME " " FINOS_VERSION, &tf_primary_bold);
     c.text(6, 28, FINOS_BOARD_NAME, &tf_primary);
     c.text(6, 38, "128x64 Flipper UI", &tf_secondary);
@@ -429,3 +436,47 @@ static void ab_draw(Canvas& c) {
     c.text(6, 56, FINOS_BUILD_DATE, &tf_secondary);
 }
 const Scene scene_about = { "About", r_enter, nullptr, ab_draw, r_in, nullptr };
+
+/* ---------- Bluetooth ---------- */
+#include "../ble.h"
+static Menu btMenu;
+static const MenuItem btItems[] = {
+    { "Toggle", nullptr, nullptr, nullptr },
+    { "Forget pairing", nullptr, nullptr, nullptr },
+    { "Name", nullptr, nullptr, nullptr },
+};
+static void bt_enter() {
+    btMenu.set("Bluetooth", btItems, 3);
+    btMenu.show_icon = false;
+}
+static void bt_draw(Canvas& c) { btMenu.draw(c); }
+static void bt_in(const InputEvent& e) {
+    if (e.key == InputKeyBack && e.type == InputTypeShort) { Scenes::pop(); return; }
+    if (btMenu.input(e)) return;
+    if (e.key == InputKeyOk && e.type == InputTypeShort) {
+        int s = btMenu.selected();
+        if (s == 0) {
+            Ble::enable(!Ble::enabled());
+            popup_show("Bluetooth", Ble::enabled() ? "On" : "Off", 700);
+        } else if (s == 1) {
+            Ble::forget();
+            popup_show("Bluetooth", "Advertising", 700);
+        } else {
+            popup_show(Ble::name(), Ble::connected() ? "Connected" : "Idle", 900);
+        }
+    }
+}
+const Scene scene_bluetooth = { "Bluetooth", bt_enter, nullptr, bt_draw, bt_in, nullptr };
+
+/* ---------- Passport ---------- */
+#include "../dolphin/assets_dolphin.h"
+static void pass_draw(Canvas& c) {
+    c.clear(0);
+    c.setColor(1);
+    c.icon(0, 10, &tfi_d_idle0);
+    c.str(60, 16, "Passport", &tf_primary);
+    c.str(60, 28, "Flipper", &tf_secondary);
+    c.str(60, 38, "Level 1", &tf_secondary);
+    c.str(60, 48, Ble::connected() ? "BT: yes" : "BT: no", &tf_secondary);
+}
+const Scene scene_passport = { "Passport", r_enter, nullptr, pass_draw, r_in, nullptr };

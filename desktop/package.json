@@ -20,8 +20,14 @@
     "appId": "org.finos.qfin",
     "productName": "qFin",
     "files": ["main.js", "preload.js", "renderer/**/*"],
-    "linux": { "target": ["AppImage"] },
-    "win": { "target": ["zip"] },
-    "mac": { "target": ["zip"] }
+    "linux": { "target": ["AppImage"], "artifactName": "qFin.${ext}" },
+    "win": { "target": ["nsis"], "artifactName": "qFin-Setup.${ext}" },
+    "mac": { "target": ["zip"], "artifactName": "qFin-mac.${ext}" },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "qFin"
+    }
   }
 }

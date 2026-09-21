@@ -1,6 +1,7 @@
 #include "appvm.h"
 #include "storage.h"
 #include "gui/widgets.h"
+#include "gui/elements.h"
 #include "gui/assets_fonts.h"
 #include "drivers/ir.h"
 #include "drivers/cc1101.h"
@@ -151,7 +152,7 @@ void AppVM::stop() { gRun = false; }
 
 void AppVM::draw(Canvas& c) {
     c.clear(0);
-    statusbar_draw(c, gTitle.c_str());
+    app_header(c, gTitle.c_str());
     if (gSt == S_MENU) {
         for (int i = 0; i < gNItems; i++) {
             int y = 14 + i * 8;

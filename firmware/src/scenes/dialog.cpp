@@ -1,5 +1,6 @@
 #include "../scene.h"
 #include "../gui/widgets.h"
+#include "../gui/elements.h"
 #include "../gui/assets_fonts.h"
 
 static const char *gTitle, *gBody, *gLeft, *gRight;
@@ -10,22 +11,12 @@ static int gFocus = 1;
 static void enter() { gFocus = 1; }
 static void draw(Canvas& c) {
     c.clear(0);
-    c.rframe(2, 6, 124, 54, 4);
-    c.text(8, 10, gTitle ? gTitle : "", &tf_primary_bold);
-    c.text(8, 22, gBody ? gBody : "", &tf_primary);
-    auto btn = [&](int x, const char* lab, bool on) {
-        if (on) {
-            c.rbox(x, 42, 52, 12, 3);
-            c.setColor(0);
-            c.textCenter(x + 26, 45, lab ? lab : "", &tf_primary);
-            c.setColor(1);
-        } else {
-            c.rframe(x, 42, 52, 12, 3);
-            c.textCenter(x + 26, 45, lab ? lab : "", &tf_primary);
-        }
-    };
-    btn(8, gLeft, gFocus == 0);
-    btn(68, gRight, gFocus == 1);
+    c.setColor(1);
+    elements_bold_rounded_frame(c, 4, 4, 120, 42);
+    c.str(10, 18, gTitle ? gTitle : "", &tf_primary);
+    c.str(10, 30, gBody ? gBody : "", &tf_secondary);
+    if (gLeft) elements_button_left(c, gLeft);
+    if (gRight) elements_button_right(c, gRight);
 }
 static void input(const InputEvent& e) {
     if (e.type != InputTypeShort && e.type != InputTypePress) return;
@@ -54,9 +45,12 @@ static uint32_t pUntil;
 static void penter() {}
 static void pdraw(Canvas& c) {
     c.clear(0);
-    c.rframe(6, 14, 116, 36, 4);
-    c.textCenter(64, 20, pTitle ? pTitle : "", &tf_primary_bold);
-    c.textCenter(64, 34, pBody ? pBody : "", &tf_primary);
+    c.setColor(1);
+    elements_bold_rounded_frame(c, 8, 12, 112, 32);
+    c.str(64 - c.textWidth(pTitle ? pTitle : "", &tf_primary) / 2, 24,
+          pTitle ? pTitle : "", &tf_primary);
+    c.str(64 - c.textWidth(pBody ? pBody : "", &tf_secondary) / 2, 36,
+          pBody ? pBody : "", &tf_secondary);
 }
 static void pinput(const InputEvent& e) {
     if (e.type == InputTypeShort) Scenes::pop();
@@ -88,7 +82,7 @@ static int kRowLen(int r) { return (int)strlen(kRows[r]); }
 static void kenter() { kRow = 1; kCol = 0; }
 static void kdraw(Canvas& c) {
     c.clear(0);
-    statusbar_draw(c, kTitle);
+    app_header(c, kTitle);
     c.rect(2, 13, 124, 12);
     c.text(5, 15, kBuf ? kBuf : "", &tf_primary);
     int cx = 5 + c.textWidth(kBuf ? kBuf : "", &tf_primary);

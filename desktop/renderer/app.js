@@ -72,6 +72,9 @@ $("clilin").addEventListener("keydown", async (e) => {
   $("cliout").textContent += "> " + line + "\n" + out + "\n";
 });
 
+$("pick2").onclick = $("pick").onclick;
+$("flash2").onclick = $("flash").onclick;
+
 $("appsls").onclick = async () => {
   const raw = await window.qfin.tfCmd(0x0E, null);
   const f = decodeFrames(raw)[0];
